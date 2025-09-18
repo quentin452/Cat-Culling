@@ -66,9 +66,18 @@ processResources {
     }
 }
 
+jar {
+	manifest {
+		from 'src/main/resources/META-INF/MANIFEST.MF'
+	}
+}
+
 task devJar(type: Jar) {
 	classifier = 'dev'
 	from sourceSets.main.output
+	manifest {
+		from 'src/main/resources/META-INF/MANIFEST.MF'
+	}
 }
 
 task sourcesJar(type: Jar) {
