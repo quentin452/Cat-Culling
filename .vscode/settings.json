@@ -1,0 +1,17 @@
+{
+    "java.compile.nullAnalysis.mode": "automatic",
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "files.watcherExclude": {
+        "**/build/**": true,
+        "**/out/**": true
+    },
+    "search.exclude": {
+        "**/build/**": true,
+        "**/out/**": true,
+        "**/3rdparty/**": true
+    },
+    "files.exclude": {
+        "**/build/**": true,
+        "**/out/**": true
+    },
+}
