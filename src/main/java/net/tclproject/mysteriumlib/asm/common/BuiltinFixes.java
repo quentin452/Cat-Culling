@@ -4,7 +4,16 @@ import cpw.mods.fml.common.Loader;
 import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.tclproject.mysteriumlib.asm.annotations.Fix;
 
+/** Contails built-in fixes. */
 public class BuiltinFixes {
+
+  /**
+   * Built-in fix to register CustomClassTransformer after forge's deobfuscation has already
+   * happened. This makes it easier to work with minecraft code from it.
+   *
+   * <p>In order to work with other/non-mc code, use FirstClassTransformer, which is how this fix is
+   * applied. It transforms classes earlier on.
+   */
   @Fix
   public static void injectData(Loader loader, Object... data) {
     ClassLoader classLoader = BuiltinFixes.class.getClassLoader();

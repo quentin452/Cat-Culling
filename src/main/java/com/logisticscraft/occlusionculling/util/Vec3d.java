@@ -1,6 +1,7 @@
 package com.logisticscraft.occlusionculling.util;
 
 public class Vec3d {
+
   public double x;
   public double y;
   public double z;
@@ -12,15 +13,15 @@ public class Vec3d {
   }
 
   public double getX() {
-    return this.x;
+    return x;
   }
 
   public double getY() {
-    return this.y;
+    return y;
   }
 
   public double getZ() {
-    return this.z;
+    return z;
   }
 
   public void set(double x, double y, double z) {
@@ -43,7 +44,7 @@ public class Vec3d {
   }
 
   public Vec3d normalize() {
-    double mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    double mag = Math.sqrt(x * x + y * y + z * z);
     this.x /= mag;
     this.y /= mag;
     this.z /= mag;
@@ -58,26 +59,28 @@ public class Vec3d {
       return false;
     }
     Vec3d vec3d = (Vec3d) other;
-    if (Double.compare(vec3d.x, this.x) != 0) {
+    if (Double.compare(vec3d.x, x) != 0) {
       return false;
     }
-    if (Double.compare(vec3d.y, this.y) != 0) {
+    if (Double.compare(vec3d.y, y) != 0) {
       return false;
     }
-    return Double.compare(vec3d.z, this.z) == 0;
+    return Double.compare(vec3d.z, z) == 0;
   }
 
+  @Override
   public int hashCode() {
-    long l = Double.doubleToLongBits(this.x);
+    long l = Double.doubleToLongBits(x);
     int i = (int) (l ^ l >>> 32);
-    l = Double.doubleToLongBits(this.y);
+    l = Double.doubleToLongBits(y);
     i = 31 * i + (int) (l ^ l >>> 32);
-    l = Double.doubleToLongBits(this.z);
+    l = Double.doubleToLongBits(z);
     i = 31 * i + (int) (l ^ l >>> 32);
     return i;
   }
 
+  @Override
   public String toString() {
-    return "(" + this.x + ", " + this.y + ", " + this.z + ")";
+    return "(" + x + ", " + y + ", " + z + ")";
   }
 }

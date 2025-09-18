@@ -5,20 +5,48 @@ import java.util.Map;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 
+/**
+ * Class that allows to create Types out of different input data. We need these Types for setting
+ * arguments and return types of methods.
+ */
 public class TypeUtils {
+
   private static final Map<String, Type> primitives = new HashMap<String, Type>(9);
 
+  /**
+   * Creates a Type based on the name of the class or primitive. e.g.:
+   * getType("net.minecraft.world.World") - will return a type for World
+   *
+   * @param name name of the class (not obfuscated) or primitive e.g. "void" or "double"
+   * @return the corresponding Type.
+   */
   public static Type getType(String name) {
-    return TypeUtils.getArrayType(name, 0);
+    return getArrayType(name, 0);
   }
 
+  /**
+   * Creates a Type for an array with the immersion of 1 of the said class or primitive. e.g.:
+   * getArrayType("net.minecraft.world.World") - will return a type for World[]
+   *
+   * @param name name of the class (not obfuscated) or primitive e.g. "void" or "double"
+   * @return the corresponding Type.
+   */
   public static Type getArrayType(String name) {
-    return TypeUtils.getArrayType(name, 1);
+    return getArrayType(name, 1);
   }
 
+  /**
+   * Creates a Type for an array with the immersion of arrayDimensions of the said class or
+   * primitive. e.g. getArrayType("net.minecraft.world.World", 2) - will return a type for World[][]
+   * e.g. getArrayType("net.minecraft.world.World", 1) - will return a type for World[] e.g.
+   * getArrayType("net.minecraft.world.World", 0) - will return a type for World
+   *
+   * @param name name of the class (not obfuscated) or primitive e.g. "void" or "double"
+   * @return the corresponding Type.
+   */
   public static Type getArrayType(String name, int arrayDimensions) {
     StringBuilder stringBuilder = new StringBuilder();
-    for (int i = 0; i < arrayDimensions; ++i) {
+    for (int i = 0; i < arrayDimensions; i++) {
       stringBuilder.append("[");
     }
     Type primitive = primitives.get(name);
@@ -32,6 +60,12 @@ public class TypeUtils {
     return Type.getType(stringBuilder.toString());
   }
 
+  /**
+   * Returns what's used in stack map frames for a Type.
+   *
+   * @param type a Type.
+   * @return the corresponding type in the format used by StackMapTable frames.
+   */
   public static Object getStackMapFormat(Type type) {
     if (type == Type.BOOLEAN_TYPE
         || type == Type.BYTE_TYPE

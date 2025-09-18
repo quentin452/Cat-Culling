@@ -5,50 +5,50 @@ import net.minecraft.tileentity.TileEntity;
 import net.tclproject.entityculling.EntityCullingBase;
 
 public class CullableEntityWrapper {
-  private long lasttime = 0L;
+
+  private long lasttime = 0;
   private boolean culled = false;
   private boolean outOfCamera = false;
+
   public Entity entity;
   public TileEntity tileEntity;
 
   public CullableEntityWrapper(Entity e) {
-    this.entity = e;
-    this.tileEntity = null;
+    entity = e;
+    tileEntity = null;
   }
 
   public CullableEntityWrapper(TileEntity e) {
-    this.tileEntity = e;
-    this.entity = null;
+    tileEntity = e;
+    entity = null;
   }
 
   public boolean hasTile() {
-    return this.tileEntity != null;
+    return tileEntity != null;
   }
 
   public boolean hasEntity() {
-    return this.entity != null;
+    return entity != null;
   }
 
   public void setTimeout() {
-    this.lasttime = System.currentTimeMillis() + 1000L;
+    lasttime = System.currentTimeMillis() + 1000;
   }
 
   public boolean isForcedVisible() {
-    return this.lasttime > System.currentTimeMillis();
+    return lasttime > System.currentTimeMillis();
   }
 
   public void setCulled(boolean value) {
     this.culled = value;
     if (!value) {
-      this.setTimeout();
+      setTimeout();
     }
   }
 
   public boolean isCulled() {
-    if (!EntityCullingBase.enabled) {
-      return false;
-    }
-    return this.culled;
+    if (!EntityCullingBase.enabled) return false;
+    return culled;
   }
 
   public void setOutOfCamera(boolean value) {
@@ -56,9 +56,7 @@ public class CullableEntityWrapper {
   }
 
   public boolean isOutOfCamera() {
-    if (!EntityCullingBase.enabled) {
-      return false;
-    }
-    return this.outOfCamera;
+    if (!EntityCullingBase.enabled) return false;
+    return outOfCamera;
   }
 }

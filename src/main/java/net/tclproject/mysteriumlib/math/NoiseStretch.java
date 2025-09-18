@@ -11,7 +11,7 @@ public class NoiseStretch {
 
   public NoiseStretch(
       SimplexNoise noise, double stretchX, double stretchZ, double offsetX, double offsetZ) {
-    this(noise, stretchX, 100.0, stretchZ, offsetX, 0.0, offsetZ);
+    this(noise, stretchX, 100.0D, stretchZ, offsetX, 0.0D, offsetZ);
   }
 
   public NoiseStretch(
@@ -24,7 +24,7 @@ public class NoiseStretch {
       double offsetZ) {
     this.noise = noise;
     this.stretchX = stretchX;
-    this.stretchY = stretchY + 100.0;
+    this.stretchY = stretchY + 100D;
     this.stretchZ = stretchZ;
     this.offsetX = offsetX;
     this.offsetY = offsetY;

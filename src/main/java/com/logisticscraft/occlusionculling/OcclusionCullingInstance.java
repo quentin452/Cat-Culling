@@ -8,19 +8,24 @@ import java.util.Arrays;
 import java.util.BitSet;
 
 public class OcclusionCullingInstance {
-  private static final int ON_MIN_X = 1;
-  private static final int ON_MAX_X = 2;
-  private static final int ON_MIN_Y = 4;
-  private static final int ON_MAX_Y = 8;
-  private static final int ON_MIN_Z = 16;
-  private static final int ON_MAX_Z = 32;
+
+  private static final int ON_MIN_X = 0x01;
+  private static final int ON_MAX_X = 0x02;
+  private static final int ON_MIN_Y = 0x04;
+  private static final int ON_MAX_Y = 0x08;
+  private static final int ON_MIN_Z = 0x10;
+  private static final int ON_MAX_Z = 0x20;
+
   private final int reach;
   private final double aabbExpansion;
   private final DataProvider provider;
   private final OcclusionCache cache;
-  private final BitSet skipList = new BitSet();
+
+  // Reused allocated data structures
+  private final BitSet skipList =
+      new BitSet(); // Grows bigger in case some mod introduces giant hitboxes
   private final Vec3d[] targetPoints = new Vec3d[15];
-  private final Vec3d targetPos = new Vec3d(0.0, 0.0, 0.0);
+  private final Vec3d targetPos = new Vec3d(0, 0, 0);
   private final int[] cameraPos = new int[3];
   private final boolean[] dotselectors = new boolean[14];
   private boolean allowRayChecks = false;
@@ -36,277 +41,338 @@ public class OcclusionCullingInstance {
     this.provider = provider;
     this.cache = cache;
     this.aabbExpansion = aabbExpansion;
-    for (int i = 0; i < this.targetPoints.length; ++i) {
-      this.targetPoints[i] = new Vec3d(0.0, 0.0, 0.0);
+    for (int i = 0; i < targetPoints.length; i++) {
+      targetPoints[i] = new Vec3d(0, 0, 0);
     }
   }
 
   public boolean isAABBVisible(Vec3d aabbMin, Vec3d aabbMax, Vec3d viewerPosition) {
     try {
-      int x;
-      int maxX = MathUtilities.floor(aabbMax.x + this.aabbExpansion);
-      int maxY = MathUtilities.floor(aabbMax.y + this.aabbExpansion);
-      int maxZ = MathUtilities.floor(aabbMax.z + this.aabbExpansion);
-      int minX = MathUtilities.floor(aabbMin.x - this.aabbExpansion);
-      int minY = MathUtilities.floor(aabbMin.y - this.aabbExpansion);
-      int minZ = MathUtilities.floor(aabbMin.z - this.aabbExpansion);
-      this.cameraPos[0] = MathUtilities.floor(viewerPosition.x);
-      this.cameraPos[1] = MathUtilities.floor(viewerPosition.y);
-      this.cameraPos[2] = MathUtilities.floor(viewerPosition.z);
-      Relative relX = Relative.from(minX, maxX, this.cameraPos[0]);
-      Relative relY = Relative.from(minY, maxY, this.cameraPos[1]);
-      Relative relZ = Relative.from(minZ, maxZ, this.cameraPos[2]);
+      int maxX = MathUtilities.floor(aabbMax.x + aabbExpansion);
+      int maxY = MathUtilities.floor(aabbMax.y + aabbExpansion);
+      int maxZ = MathUtilities.floor(aabbMax.z + aabbExpansion);
+      int minX = MathUtilities.floor(aabbMin.x - aabbExpansion);
+      int minY = MathUtilities.floor(aabbMin.y - aabbExpansion);
+      int minZ = MathUtilities.floor(aabbMin.z - aabbExpansion);
+
+      cameraPos[0] = MathUtilities.floor(viewerPosition.x);
+      cameraPos[1] = MathUtilities.floor(viewerPosition.y);
+      cameraPos[2] = MathUtilities.floor(viewerPosition.z);
+
+      Relative relX = Relative.from(minX, maxX, cameraPos[0]);
+      Relative relY = Relative.from(minY, maxY, cameraPos[1]);
+      Relative relZ = Relative.from(minZ, maxZ, cameraPos[2]);
+
       if (relX == Relative.INSIDE && relY == Relative.INSIDE && relZ == Relative.INSIDE) {
-        return true;
+        return true; // We are inside of the AABB, don't cull
       }
-      this.skipList.clear();
+
+      skipList.clear();
+
+      // Just check the cache first
       int id = 0;
-      for (x = minX; x <= maxX; ++x) {
-        for (int y = minY; y <= maxY; ++y) {
-          for (int z = minZ; z <= maxZ; ++z) {
-            int cachedValue = this.getCacheValue(x, y, z);
+      for (int x = minX; x <= maxX; x++) {
+        for (int y = minY; y <= maxY; y++) {
+          for (int z = minZ; z <= maxZ; z++) {
+            int cachedValue = getCacheValue(x, y, z);
+
             if (cachedValue == 1) {
+              // non-occluding
               return true;
             }
+
             if (cachedValue != 0) {
-              this.skipList.set(id);
+              // was checked and it wasn't visible
+              skipList.set(id);
             }
-            ++id;
+            id++;
           }
         }
       }
-      this.allowRayChecks = false;
+
+      // only after the first hit wall the cache becomes valid.
+      allowRayChecks = false;
+
+      // since the cache wasn't helpfull
       id = 0;
-      for (x = minX; x <= maxX; ++x) {
+      for (int x = minX; x <= maxX; x++) {
         byte visibleOnFaceX = 0;
         byte faceEdgeDataX = 0;
-        faceEdgeDataX = (byte) (faceEdgeDataX | (x == minX ? 1 : 0));
-        faceEdgeDataX = (byte) (faceEdgeDataX | (x == maxX ? 2 : 0));
-        visibleOnFaceX = (byte) (visibleOnFaceX | (x == minX && relX == Relative.POSITIVE ? 1 : 0));
-        visibleOnFaceX = (byte) (visibleOnFaceX | (x == maxX && relX == Relative.NEGATIVE ? 2 : 0));
-        for (int y = minY; y <= maxY; ++y) {
+        faceEdgeDataX |= (x == minX) ? ON_MIN_X : 0;
+        faceEdgeDataX |= (x == maxX) ? ON_MAX_X : 0;
+        visibleOnFaceX |= (x == minX && relX == Relative.POSITIVE) ? ON_MIN_X : 0;
+        visibleOnFaceX |= (x == maxX && relX == Relative.NEGATIVE) ? ON_MAX_X : 0;
+        for (int y = minY; y <= maxY; y++) {
           byte faceEdgeDataY = faceEdgeDataX;
           byte visibleOnFaceY = visibleOnFaceX;
-          faceEdgeDataY = (byte) (faceEdgeDataY | (y == minY ? 4 : 0));
-          faceEdgeDataY = (byte) (faceEdgeDataY | (y == maxY ? 8 : 0));
-          visibleOnFaceY =
-              (byte) (visibleOnFaceY | (y == minY && relY == Relative.POSITIVE ? 4 : 0));
-          visibleOnFaceY =
-              (byte) (visibleOnFaceY | (y == maxY && relY == Relative.NEGATIVE ? 8 : 0));
-          for (int z = minZ; z <= maxZ; ++z) {
+          faceEdgeDataY |= (y == minY) ? ON_MIN_Y : 0;
+          faceEdgeDataY |= (y == maxY) ? ON_MAX_Y : 0;
+          visibleOnFaceY |= (y == minY && relY == Relative.POSITIVE) ? ON_MIN_Y : 0;
+          visibleOnFaceY |= (y == maxY && relY == Relative.NEGATIVE) ? ON_MAX_Y : 0;
+          for (int z = minZ; z <= maxZ; z++) {
             byte faceEdgeData = faceEdgeDataY;
             byte visibleOnFace = visibleOnFaceY;
-            faceEdgeData = (byte) (faceEdgeData | (z == minZ ? 16 : 0));
-            faceEdgeData = (byte) (faceEdgeData | (z == maxZ ? 32 : 0));
-            visibleOnFace =
-                (byte) (visibleOnFace | (z == minZ && relZ == Relative.POSITIVE ? 16 : 0));
-            visibleOnFace =
-                (byte) (visibleOnFace | (z == maxZ && relZ == Relative.NEGATIVE ? 32 : 0));
-            if (this.skipList.get(id)) {
-              ++id;
+            faceEdgeData |= (z == minZ) ? ON_MIN_Z : 0;
+            faceEdgeData |= (z == maxZ) ? ON_MAX_Z : 0;
+            visibleOnFace |= (z == minZ && relZ == Relative.POSITIVE) ? ON_MIN_Z : 0;
+            visibleOnFace |= (z == maxZ && relZ == Relative.NEGATIVE) ? ON_MAX_Z : 0;
+            if (skipList.get(id)) { // was checked and it wasn't visible
+              id++;
               continue;
             }
+
             if (visibleOnFace != 0) {
-              this.targetPos.set(x, y, z);
-              if (this.isVoxelVisible(
-                  viewerPosition, this.targetPos, faceEdgeData, visibleOnFace)) {
+              targetPos.set(x, y, z);
+              if (isVoxelVisible(viewerPosition, targetPos, faceEdgeData, visibleOnFace)) {
                 return true;
               }
             }
-            ++id;
+            id++;
           }
         }
       }
+
       return false;
     } catch (Throwable t) {
+      // Failsafe
       t.printStackTrace();
-      return true;
     }
+    return true;
   }
 
+  /**
+   * @param viewerPosition
+   * @param position
+   * @param faceData contains rather this Block is on the outside for a given face
+   * @param visibleOnFace contains rather a face should be concidered
+   * @return
+   */
   private boolean isVoxelVisible(
       Vec3d viewerPosition, Vec3d position, byte faceData, byte visibleOnFace) {
     int targetSize = 0;
-    Arrays.fill(this.dotselectors, false);
-    if ((visibleOnFace & 1) == 1) {
-      this.dotselectors[0] = true;
-      if ((faceData & 0xFFFFFFFE) != 0) {
-        this.dotselectors[1] = true;
-        this.dotselectors[4] = true;
-        this.dotselectors[5] = true;
+    Arrays.fill(dotselectors, false);
+    if ((visibleOnFace & ON_MIN_X) == ON_MIN_X) {
+      dotselectors[0] = true;
+      if ((faceData & ~ON_MIN_X) != 0) {
+        dotselectors[1] = true;
+        dotselectors[4] = true;
+        dotselectors[5] = true;
       }
-      this.dotselectors[8] = true;
+      dotselectors[8] = true;
     }
-    if ((visibleOnFace & 4) == 4) {
-      this.dotselectors[0] = true;
-      if ((faceData & 0xFFFFFFFB) != 0) {
-        this.dotselectors[3] = true;
-        this.dotselectors[4] = true;
-        this.dotselectors[7] = true;
+    if ((visibleOnFace & ON_MIN_Y) == ON_MIN_Y) {
+      dotselectors[0] = true;
+      if ((faceData & ~ON_MIN_Y) != 0) {
+        dotselectors[3] = true;
+        dotselectors[4] = true;
+        dotselectors[7] = true;
       }
-      this.dotselectors[9] = true;
+      dotselectors[9] = true;
     }
-    if ((visibleOnFace & 0x10) == 16) {
-      this.dotselectors[0] = true;
-      if ((faceData & 0xFFFFFFEF) != 0) {
-        this.dotselectors[1] = true;
-        this.dotselectors[4] = true;
-        this.dotselectors[5] = true;
+    if ((visibleOnFace & ON_MIN_Z) == ON_MIN_Z) {
+      dotselectors[0] = true;
+      if ((faceData & ~ON_MIN_Z) != 0) {
+        dotselectors[1] = true;
+        dotselectors[4] = true;
+        dotselectors[5] = true;
       }
-      this.dotselectors[10] = true;
+      dotselectors[10] = true;
     }
-    if ((visibleOnFace & 2) == 2) {
-      this.dotselectors[4] = true;
-      if ((faceData & 0xFFFFFFFD) != 0) {
-        this.dotselectors[5] = true;
-        this.dotselectors[6] = true;
-        this.dotselectors[7] = true;
+    if ((visibleOnFace & ON_MAX_X) == ON_MAX_X) {
+      dotselectors[4] = true;
+      if ((faceData & ~ON_MAX_X) != 0) {
+        dotselectors[5] = true;
+        dotselectors[6] = true;
+        dotselectors[7] = true;
       }
-      this.dotselectors[11] = true;
+      dotselectors[11] = true;
     }
-    if ((visibleOnFace & 8) == 8) {
-      this.dotselectors[1] = true;
-      if ((faceData & 0xFFFFFFF7) != 0) {
-        this.dotselectors[2] = true;
-        this.dotselectors[5] = true;
-        this.dotselectors[6] = true;
+    if ((visibleOnFace & ON_MAX_Y) == ON_MAX_Y) {
+      dotselectors[1] = true;
+      if ((faceData & ~ON_MAX_Y) != 0) {
+        dotselectors[2] = true;
+        dotselectors[5] = true;
+        dotselectors[6] = true;
       }
-      this.dotselectors[12] = true;
+      dotselectors[12] = true;
     }
-    if ((visibleOnFace & 0x20) == 32) {
-      this.dotselectors[2] = true;
-      if ((faceData & 0xFFFFFFDF) != 0) {
-        this.dotselectors[3] = true;
-        this.dotselectors[6] = true;
-        this.dotselectors[7] = true;
+    if ((visibleOnFace & ON_MAX_Z) == ON_MAX_Z) {
+      dotselectors[2] = true;
+      if ((faceData & ~ON_MAX_Z) != 0) {
+        dotselectors[3] = true;
+        dotselectors[6] = true;
+        dotselectors[7] = true;
       }
-      this.dotselectors[13] = true;
+      dotselectors[13] = true;
     }
-    if (this.dotselectors[0]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.05, 0.05, 0.05);
-    }
-    if (this.dotselectors[1]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.05, 0.95, 0.05);
-    }
-    if (this.dotselectors[2]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.05, 0.95, 0.95);
-    }
-    if (this.dotselectors[3]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.05, 0.05, 0.95);
-    }
-    if (this.dotselectors[4]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.95, 0.05, 0.05);
-    }
-    if (this.dotselectors[5]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.95, 0.95, 0.05);
-    }
-    if (this.dotselectors[6]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.95, 0.95, 0.95);
-    }
-    if (this.dotselectors[7]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.95, 0.05, 0.95);
-    }
-    if (this.dotselectors[8]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.05, 0.5, 0.5);
-    }
-    if (this.dotselectors[9]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.5, 0.05, 0.5);
-    }
-    if (this.dotselectors[10]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.5, 0.5, 0.05);
-    }
-    if (this.dotselectors[11]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.95, 0.5, 0.5);
-    }
-    if (this.dotselectors[12]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.5, 0.95, 0.5);
-    }
-    if (this.dotselectors[13]) {
-      this.targetPoints[targetSize++].setAdd(position, 0.5, 0.5, 0.95);
-    }
-    return this.isVisible(viewerPosition, this.targetPoints, targetSize);
+
+    if (dotselectors[0]) targetPoints[targetSize++].setAdd(position, 0.05, 0.05, 0.05);
+    if (dotselectors[1]) targetPoints[targetSize++].setAdd(position, 0.05, 0.95, 0.05);
+    if (dotselectors[2]) targetPoints[targetSize++].setAdd(position, 0.05, 0.95, 0.95);
+    if (dotselectors[3]) targetPoints[targetSize++].setAdd(position, 0.05, 0.05, 0.95);
+    if (dotselectors[4]) targetPoints[targetSize++].setAdd(position, 0.95, 0.05, 0.05);
+    if (dotselectors[5]) targetPoints[targetSize++].setAdd(position, 0.95, 0.95, 0.05);
+    if (dotselectors[6]) targetPoints[targetSize++].setAdd(position, 0.95, 0.95, 0.95);
+    if (dotselectors[7]) targetPoints[targetSize++].setAdd(position, 0.95, 0.05, 0.95);
+    // middle points
+    if (dotselectors[8]) targetPoints[targetSize++].setAdd(position, 0.05, 0.5, 0.5);
+    if (dotselectors[9]) targetPoints[targetSize++].setAdd(position, 0.5, 0.05, 0.5);
+    if (dotselectors[10]) targetPoints[targetSize++].setAdd(position, 0.5, 0.5, 0.05);
+    if (dotselectors[11]) targetPoints[targetSize++].setAdd(position, 0.95, 0.5, 0.5);
+    if (dotselectors[12]) targetPoints[targetSize++].setAdd(position, 0.5, 0.95, 0.5);
+    if (dotselectors[13]) targetPoints[targetSize++].setAdd(position, 0.5, 0.5, 0.95);
+
+    return isVisible(viewerPosition, targetPoints, targetSize);
   }
 
   private boolean rayIntersection(int[] b, Vec3d rayOrigin, Vec3d rayDir) {
-    Vec3d rInv = new Vec3d(1.0, 1.0, 1.0).div(rayDir);
-    double t1 = ((double) b[0] - rayOrigin.x) * rInv.x;
-    double t2 = ((double) (b[0] + 1) - rayOrigin.x) * rInv.x;
-    double t3 = ((double) b[1] - rayOrigin.y) * rInv.y;
-    double t4 = ((double) (b[1] + 1) - rayOrigin.y) * rInv.y;
-    double t5 = ((double) b[2] - rayOrigin.z) * rInv.z;
-    double t6 = ((double) (b[2] + 1) - rayOrigin.z) * rInv.z;
+    Vec3d rInv = new Vec3d(1, 1, 1).div(rayDir);
+
+    double t1 = (b[0] - rayOrigin.x) * rInv.x;
+    double t2 = (b[0] + 1 - rayOrigin.x) * rInv.x;
+    double t3 = (b[1] - rayOrigin.y) * rInv.y;
+    double t4 = (b[1] + 1 - rayOrigin.y) * rInv.y;
+    double t5 = (b[2] - rayOrigin.z) * rInv.z;
+    double t6 = (b[2] + 1 - rayOrigin.z) * rInv.z;
+
     double tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
     double tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
-    if (tmax > 0.0) {
+
+    // if tmax > 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+    if (tmax > 0) {
       return false;
     }
-    return !(tmin > tmax);
+
+    // if tmin > tmax, ray doesn't intersect AABB
+    if (tmin > tmax) {
+      return false;
+    }
+
+    return true;
   }
 
+  /**
+   * returns the grid cells that intersect with this Vec3d<br>
+   * <a href=
+   * "http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html">http://playtechs.blogspot.de/2007/03/raytracing-on-grid.html</a>
+   *
+   * <p>Caching assumes that all Vec3d's are inside the same block
+   */
   private boolean isVisible(Vec3d start, Vec3d[] targets, int size) {
-    int x = this.cameraPos[0];
-    int y = this.cameraPos[1];
-    int z = this.cameraPos[2];
-    for (int v = 0; v < size; ++v) {
-      double t_next_z;
-      int z_inc;
-      double t_next_y;
-      int y_inc;
-      double t_next_x;
-      int x_inc;
+    // start cell coordinate
+    int x = cameraPos[0];
+    int y = cameraPos[1];
+    int z = cameraPos[2];
+
+    for (int v = 0; v < size; v++) {
+      // ray-casting target
       Vec3d target = targets[v];
+
       double relativeX = start.x - target.getX();
       double relativeY = start.y - target.getY();
       double relativeZ = start.z - target.getZ();
-      if (this.allowRayChecks
-          && this.rayIntersection(
-              this.lastHitBlock, start, new Vec3d(relativeX, relativeY, relativeZ).normalize()))
+
+      if (allowRayChecks
+          && rayIntersection(
+              lastHitBlock, start, new Vec3d(relativeX, relativeY, relativeZ).normalize())) {
         continue;
+      }
+
+      // horizontal and vertical cell amount spanned
       double dimensionX = Math.abs(relativeX);
       double dimensionY = Math.abs(relativeY);
       double dimensionZ = Math.abs(relativeZ);
-      double dimFracX = 1.0 / dimensionX;
-      double dimFracY = 1.0 / dimensionY;
-      double dimFracZ = 1.0 / dimensionZ;
+
+      // distance between horizontal intersection points with cell border as a
+      // fraction of the total Vec3d length
+      double dimFracX = 1f / dimensionX;
+      // distance between vertical intersection points with cell border as a fraction
+      // of the total Vec3d length
+      double dimFracY = 1f / dimensionY;
+      double dimFracZ = 1f / dimensionZ;
+
+      // total amount of intersected cells
       int intersectCount = 1;
-      if (dimensionX == 0.0) {
+
+      // 1, 0 or -1
+      // determines the direction of the next cell (horizontally / vertically)
+      int x_inc, y_inc, z_inc;
+
+      // the distance to the next horizontal / vertical intersection point with a cell
+      // border as a fraction of the total Vec3d length
+      double t_next_y, t_next_x, t_next_z;
+
+      if (dimensionX == 0f) {
         x_inc = 0;
-        t_next_x = dimFracX;
+        t_next_x = dimFracX; // don't increment horizontally because the Vec3d is perfectly vertical
       } else if (target.x > start.x) {
-        x_inc = 1;
-        intersectCount += MathUtilities.floor(target.x) - x;
-        t_next_x = (float) (((double) (x + 1) - start.x) * dimFracX);
+        x_inc = 1; // target point is horizontally greater than starting point so increment every
+        // step by 1
+        intersectCount +=
+            MathUtilities.floor(target.x) - x; // increment total amount of intersecting cells
+        t_next_x = (float) ((x + 1 - start.x) * dimFracX); // calculate the next horizontal
+        // intersection
+        // point based on the position inside
+        // the first cell
       } else {
-        x_inc = -1;
-        intersectCount += x - MathUtilities.floor(target.x);
-        t_next_x = (float) ((start.x - (double) x) * dimFracX);
+        x_inc = -1; // target point is horizontally smaller than starting point so reduce every step
+        // by 1
+        intersectCount +=
+            x - MathUtilities.floor(target.x); // increment total amount of intersecting cells
+        t_next_x = (float) ((start.x - x) * dimFracX); // calculate the next horizontal
+        // intersection point
+        // based on the position inside
+        // the first cell
       }
-      if (dimensionY == 0.0) {
+
+      if (dimensionY == 0f) {
         y_inc = 0;
-        t_next_y = dimFracY;
+        t_next_y = dimFracY; // don't increment vertically because the Vec3d is perfectly horizontal
       } else if (target.y > start.y) {
-        y_inc = 1;
-        intersectCount += MathUtilities.floor(target.y) - y;
-        t_next_y = (float) (((double) (y + 1) - start.y) * dimFracY);
+        y_inc = 1; // target point is vertically greater than starting point so increment every
+        // step by 1
+        intersectCount +=
+            MathUtilities.floor(target.y) - y; // increment total amount of intersecting cells
+        t_next_y = (float) ((y + 1 - start.y) * dimFracY); // calculate the next vertical
+        // intersection
+        // point based on the position inside
+        // the first cell
       } else {
-        y_inc = -1;
-        intersectCount += y - MathUtilities.floor(target.y);
-        t_next_y = (float) ((start.y - (double) y) * dimFracY);
+        y_inc = -1; // target point is vertically smaller than starting point so reduce every step
+        // by 1
+        intersectCount +=
+            y - MathUtilities.floor(target.y); // increment total amount of intersecting cells
+        t_next_y = (float) ((start.y - y) * dimFracY); // calculate the next vertical intersection
+        // point
+        // based on the position inside
+        // the first cell
       }
-      if (dimensionZ == 0.0) {
+
+      if (dimensionZ == 0f) {
         z_inc = 0;
-        t_next_z = dimFracZ;
+        t_next_z = dimFracZ; // don't increment vertically because the Vec3d is perfectly horizontal
       } else if (target.z > start.z) {
-        z_inc = 1;
-        intersectCount += MathUtilities.floor(target.z) - z;
-        t_next_z = (float) (((double) (z + 1) - start.z) * dimFracZ);
+        z_inc = 1; // target point is vertically greater than starting point so increment every
+        // step by 1
+        intersectCount +=
+            MathUtilities.floor(target.z) - z; // increment total amount of intersecting cells
+        t_next_z = (float) ((z + 1 - start.z) * dimFracZ); // calculate the next vertical
+        // intersection
+        // point based on the position inside
+        // the first cell
       } else {
-        z_inc = -1;
-        intersectCount += z - MathUtilities.floor(target.z);
-        t_next_z = (float) ((start.z - (double) z) * dimFracZ);
+        z_inc = -1; // target point is vertically smaller than starting point so reduce every step
+        // by 1
+        intersectCount +=
+            z - MathUtilities.floor(target.z); // increment total amount of intersecting cells
+        t_next_z = (float) ((start.z - z) * dimFracZ); // calculate the next vertical intersection
+        // point
+        // based on the position inside
+        // the first cell
       }
+
       boolean finished =
-          this.stepRay(
+          stepRay(
               start,
               x,
               y,
@@ -321,14 +387,15 @@ public class OcclusionCullingInstance {
               t_next_y,
               t_next_x,
               t_next_z);
-      this.provider.cleanup();
+      provider.cleanup();
       if (finished) {
-        this.cacheResult(targets[0], true);
+        cacheResult(targets[0], true);
         return true;
+      } else {
+        allowRayChecks = true;
       }
-      this.allowRayChecks = true;
     }
-    this.cacheResult(targets[0], false);
+    cacheResult(targets[0], false);
     return false;
   }
 
@@ -347,72 +414,89 @@ public class OcclusionCullingInstance {
       double t_next_y,
       double t_next_x,
       double t_next_z) {
-    while (n > 1) {
-      int cVal = this.getCacheValue(currentX, currentY, currentZ);
+    // iterate through all intersecting cells (n times)
+    for (; n > 1; n--) { // n-1 times because we don't want to check the last block
+      // towards - where from
+
+      // get cached value, 0 means uncached (default)
+      int cVal = getCacheValue(currentX, currentY, currentZ);
+
       if (cVal == 2) {
-        this.lastHitBlock[0] = currentX;
-        this.lastHitBlock[1] = currentY;
-        this.lastHitBlock[2] = currentZ;
+        // block cached as occluding, stop ray
+        lastHitBlock[0] = currentX;
+        lastHitBlock[1] = currentY;
+        lastHitBlock[2] = currentZ;
         return false;
       }
+
       if (cVal == 0) {
+        // save current cell
         int chunkX = currentX >> 4;
         int chunkZ = currentZ >> 4;
-        if (!this.provider.prepareChunk(chunkX, chunkZ)) {
+        if (!provider.prepareChunk(chunkX, chunkZ)) { // Chunk not ready
           return false;
         }
-        if (this.provider.isOpaqueFullCube(currentX, currentY, currentZ)) {
-          this.cache.setLastHidden();
-          this.lastHitBlock[0] = currentX;
-          this.lastHitBlock[1] = currentY;
-          this.lastHitBlock[2] = currentZ;
+
+        if (provider.isOpaqueFullCube(currentX, currentY, currentZ)) {
+          cache.setLastHidden();
+          lastHitBlock[0] = currentX;
+          lastHitBlock[1] = currentY;
+          lastHitBlock[2] = currentZ;
           return false;
         }
-        this.cache.setLastVisible();
+
+        cache.setLastVisible();
       }
-      if (t_next_y < t_next_x && t_next_y < t_next_z) {
-        currentY += y_inc;
-        t_next_y += distInY;
-      } else if (t_next_x < t_next_y && t_next_x < t_next_z) {
-        currentX += x_inc;
-        t_next_x += distInX;
+
+      if (t_next_y < t_next_x
+          && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to
+        // the next vertical
+        // intersection point is smaller than to the next horizontal intersection point
+        currentY += y_inc; // move up/down
+        t_next_y += distInY; // update next vertical intersection point
+      } else if (t_next_x < t_next_y && t_next_x < t_next_z) { // next cell is right/left
+        currentX += x_inc; // move right/left
+        t_next_x += distInX; // update next horizontal intersection point
       } else {
-        currentZ += z_inc;
-        t_next_z += distInZ;
+        currentZ += z_inc; // move right/left
+        t_next_z += distInZ; // update next horizontal intersection point
       }
-      --n;
     }
     return true;
   }
 
+  // -1 = invalid location, 0 = not checked yet, 1 = visible, 2 = occluding
   private int getCacheValue(int x, int y, int z) {
-    if (Math.abs(x -= this.cameraPos[0]) > this.reach - 2
-        || Math.abs(y -= this.cameraPos[1]) > this.reach - 2
-        || Math.abs(z -= this.cameraPos[2]) > this.reach - 2) {
+    x -= cameraPos[0];
+    y -= cameraPos[1];
+    z -= cameraPos[2];
+    if (Math.abs(x) > reach - 2 || Math.abs(y) > reach - 2 || Math.abs(z) > reach - 2) {
       return -1;
     }
-    return this.cache.getState(x + this.reach, y + this.reach, z + this.reach);
+
+    // check if target is already known
+    return cache.getState(x + reach, y + reach, z + reach);
   }
 
   private void cacheResult(int x, int y, int z, boolean result) {
-    int cx = x - this.cameraPos[0] + this.reach;
-    int cy = y - this.cameraPos[1] + this.reach;
-    int cz = z - this.cameraPos[2] + this.reach;
+    int cx = x - cameraPos[0] + reach;
+    int cy = y - cameraPos[1] + reach;
+    int cz = z - cameraPos[2] + reach;
     if (result) {
-      this.cache.setVisible(cx, cy, cz);
+      cache.setVisible(cx, cy, cz);
     } else {
-      this.cache.setHidden(cx, cy, cz);
+      cache.setHidden(cx, cy, cz);
     }
   }
 
   private void cacheResult(Vec3d vector, boolean result) {
-    int cx = MathUtilities.floor(vector.x) - this.cameraPos[0] + this.reach;
-    int cy = MathUtilities.floor(vector.y) - this.cameraPos[1] + this.reach;
-    int cz = MathUtilities.floor(vector.z) - this.cameraPos[2] + this.reach;
+    int cx = MathUtilities.floor(vector.x) - cameraPos[0] + reach;
+    int cy = MathUtilities.floor(vector.y) - cameraPos[1] + reach;
+    int cz = MathUtilities.floor(vector.z) - cameraPos[2] + reach;
     if (result) {
-      this.cache.setVisible(cx, cy, cz);
+      cache.setVisible(cx, cy, cz);
     } else {
-      this.cache.setHidden(cx, cy, cz);
+      cache.setHidden(cx, cy, cz);
     }
   }
 
@@ -420,7 +504,7 @@ public class OcclusionCullingInstance {
     this.cache.resetCache();
   }
 
-  private static enum Relative {
+  private enum Relative {
     INSIDE,
     POSITIVE,
     NEGATIVE;
@@ -428,8 +512,7 @@ public class OcclusionCullingInstance {
     public static Relative from(int min, int max, int pos) {
       if (max > pos && min > pos) {
         return POSITIVE;
-      }
-      if (min < pos && max < pos) {
+      } else if (min < pos && max < pos) {
         return NEGATIVE;
       }
       return INSIDE;

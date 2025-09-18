@@ -1,15 +1,16 @@
 package com.logisticscraft.occlusionculling.cache;
 
 public interface OcclusionCache {
-  public void resetCache();
 
-  public void setVisible(int var1, int var2, int var3);
+  void resetCache();
 
-  public void setHidden(int var1, int var2, int var3);
+  void setVisible(int x, int y, int z);
 
-  public int getState(int var1, int var2, int var3);
+  void setHidden(int x, int y, int z);
 
-  public void setLastHidden();
+  int getState(int x, int y, int z);
 
-  public void setLastVisible();
+  void setLastHidden();
+
+  void setLastVisible();
 }

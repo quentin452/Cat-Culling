@@ -13,12 +13,13 @@ public class SpiralPatternGenerator implements Iterable {
   }
 
   public SpiralPatternGenerator(ChunkCoordIntPair center, int rangeMax) {
-    Objects.ensureNotNull((Object) center);
+    Objects.ensureNotNull(center);
     if (rangeMax < 0) {
       throw new IllegalArgumentException("The maximum range must be more than or equal to 0.");
+    } else {
+      this.center = center;
+      this.rangeMax = rangeMax;
     }
-    this.center = center;
-    this.rangeMax = rangeMax;
   }
 
   public Iterator iterator() {
@@ -28,7 +29,6 @@ public class SpiralPatternGenerator implements Iterable {
       protected SpiralDirection currentDirection;
       private int currentRange = 0;
 
-      @Override
       public boolean hasNext() {
         return this.currentRange <= SpiralPatternGenerator.this.rangeMax;
       }
@@ -40,60 +40,50 @@ public class SpiralPatternGenerator implements Iterable {
           this.currentZ = SpiralPatternGenerator.this.center.chunkZPos - this.currentRange;
           this.currentDirection = SpiralDirection.right;
           return SpiralPatternGenerator.this.center;
+        } else {
+          ChunkCoordIntPair result = new ChunkCoordIntPair(this.currentX, this.currentZ);
+          this.step();
+          return result;
         }
-        ChunkCoordIntPair result = new ChunkCoordIntPair(this.currentX, this.currentZ);
-        this.step();
-        return result;
       }
 
       protected void step() {
         switch (this.currentDirection) {
           case right:
-            {
-              if (this.currentX
-                  < SpiralPatternGenerator.this.center.chunkXPos + this.currentRange) {
-                ++this.currentX;
-              } else {
-                this.currentDirection = SpiralDirection.down;
-                this.step();
-              }
+            if (this.currentX < SpiralPatternGenerator.this.center.chunkXPos + this.currentRange) {
+              ++this.currentX;
+            } else {
+              this.currentDirection = SpiralDirection.down;
+              this.step();
             }
           case down:
-            {
-              if (this.currentZ
-                  < SpiralPatternGenerator.this.center.chunkZPos + this.currentRange) {
-                ++this.currentZ;
-              } else {
-                this.currentDirection = SpiralDirection.left;
-                this.step();
-              }
+            if (this.currentZ < SpiralPatternGenerator.this.center.chunkZPos + this.currentRange) {
+              ++this.currentZ;
+            } else {
+              this.currentDirection = SpiralDirection.left;
+              this.step();
             }
           case left:
-            {
-              if (this.currentX
-                  > SpiralPatternGenerator.this.center.chunkXPos - this.currentRange) {
-                --this.currentX;
-              } else {
-                this.currentDirection = SpiralDirection.up;
-                this.step();
-              }
+            if (this.currentX > SpiralPatternGenerator.this.center.chunkXPos - this.currentRange) {
+              --this.currentX;
+            } else {
+              this.currentDirection = SpiralDirection.up;
+              this.step();
             }
           case up:
-            {
-              if (this.currentZ - 1
-                  > SpiralPatternGenerator.this.center.chunkZPos - this.currentRange) {
-                --this.currentZ;
-                break;
-              }
+            if (this.currentZ - 1
+                > SpiralPatternGenerator.this.center.chunkZPos - this.currentRange) {
+              --this.currentZ;
+            } else {
               this.currentDirection = SpiralDirection.right;
               ++this.currentRange;
               this.currentX = SpiralPatternGenerator.this.center.chunkXPos - this.currentRange;
               this.currentZ = SpiralPatternGenerator.this.center.chunkZPos - this.currentRange;
             }
+          default:
         }
       }
 
-      @Override
       public void remove() {
         throw new UnsupportedOperationException("Not supported at this moment in time.");
       }
