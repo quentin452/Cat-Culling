@@ -1,7 +1,7 @@
 package net.tclproject.entityculling;
 
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
-import com.logisticscraft.occlusionculling.cache.ArrayOcclusionCache;
+import com.logisticscraft.occlusionculling.cache.NoOpOcclusionCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
@@ -32,7 +32,7 @@ public abstract class EntityCullingBase {
           new OcclusionCullingInstance(
               Config.tracingDistance,
               new Provider(),
-              new ArrayOcclusionCache(Config.tracingDistance),
+              new NoOpOcclusionCache(),
               0);
     } else {
       culling = new OcclusionCullingInstance(Config.tracingDistance, new Provider());

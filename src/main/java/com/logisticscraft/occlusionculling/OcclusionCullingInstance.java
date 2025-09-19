@@ -1,6 +1,6 @@
 package com.logisticscraft.occlusionculling;
 
-import com.logisticscraft.occlusionculling.cache.ArrayOcclusionCache;
+import com.logisticscraft.occlusionculling.cache.NoOpOcclusionCache;
 import com.logisticscraft.occlusionculling.cache.OcclusionCache;
 import com.logisticscraft.occlusionculling.util.MathUtilities;
 import com.logisticscraft.occlusionculling.util.Vec3d;
@@ -32,7 +32,7 @@ public class OcclusionCullingInstance {
   private final int[] lastHitBlock = new int[3];
 
   public OcclusionCullingInstance(int maxDistance, DataProvider provider) {
-    this(maxDistance, provider, new ArrayOcclusionCache(maxDistance), 0.5);
+    this(maxDistance, provider, new NoOpOcclusionCache(), 0.5);
   }
 
   public OcclusionCullingInstance(
