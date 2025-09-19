@@ -3,6 +3,7 @@ package net.tclproject.mysteriumlib.asm.fixes;
 import static net.minecraft.client.renderer.entity.RendererLivingEntity.NAME_TAG_RANGE;
 import static net.minecraft.client.renderer.entity.RendererLivingEntity.NAME_TAG_RANGE_SNEAK;
 
+import com.logisticscraft.occlusionculling.util.Vec3d;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.particle.EntityFX;
@@ -15,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.Vec3;
 import net.tclproject.entityculling.EntityCulling;
 import net.tclproject.entityculling.EntityCullingBase;
 import net.tclproject.entityculling.handlers.Config;
@@ -256,19 +258,72 @@ public class MysteriumPatchesFixesCulling {
       float cosSinPitch) {
     // Check if particle culling is enabled
     if (!EntityCullingBase.enabled) {
+      EntityCulling.instance.renderedParticles++;
       return false; // Continue normal rendering
     }
 
+    // Get wrapper for this particle
     CullableParticleWrapper cullable = CullableEntityRegistry.getWrapper(particle);
 
-    if (!cullable.isForcedVisible() && cullable.isCulled()) {
-      // Skip rendering this particle by returning true (which skips the
-      // original method)
-      return true;
+    // Check if forced visible
+    if (cullable.isForcedVisible()) {
+      EntityCulling.instance.renderedParticles++;
+      return false;
     }
 
-    // Continue normal rendering
-    EntityCulling.instance.renderedParticles++;
-    return false;
+    // Calculate visibility on-the-fly to avoid delay from CullTask updates
+    try {
+      Minecraft mc = Minecraft.getMinecraft();
+      if (mc.thePlayer == null || mc.theWorld == null || EntityCulling.instance.culling == null) {
+        EntityCulling.instance.renderedParticles++;
+        return false;
+      }
+
+      // Skip culling if in spectator mode or no-clip
+      if (mc.thePlayer.noClip || mc.gameSettings.thirdPersonView != 0) {
+        EntityCulling.instance.renderedParticles++;
+        return false;
+      }
+
+      // Get camera position
+      Vec3 cameraPos = mc.renderViewEntity.getPosition(partialTicks);
+      Vec3d camera = new Vec3d(cameraPos.xCoord, cameraPos.yCoord, cameraPos.zCoord);
+
+      // Check distance limit
+      double dx = particle.posX - cameraPos.xCoord;
+      double dy = particle.posY - cameraPos.yCoord;
+      double dz = particle.posZ - cameraPos.zCoord;
+      double distanceSq = dx * dx + dy * dy + dz * dz;
+
+      if (distanceSq > Config.tracingDistance * Config.tracingDistance) {
+        EntityCulling.instance.renderedParticles++;
+        return false; // Too far to bother culling
+      }
+
+      // Create bounding box for particle (slightly larger to avoid edge cases)
+      double size = 0.3; // Slightly larger than CullTask to avoid leaks
+      Vec3d aabbMin = new Vec3d(particle.posX - size, particle.posY - size, particle.posZ - size);
+      Vec3d aabbMax = new Vec3d(particle.posX + size, particle.posY + size, particle.posZ + size);
+
+      // Test visibility
+      boolean visible = EntityCulling.instance.culling.isAABBVisible(aabbMin, aabbMax, camera);
+
+      if (!visible) {
+        // Update wrapper state for consistency with CullTask
+        cullable.setCulled(true);
+        EntityCulling.instance.skippedParticles++;
+        return true; // Skip rendering
+      }
+
+      // Particle is visible
+      cullable.setCulled(false);
+      EntityCulling.instance.renderedParticles++;
+      return false;
+
+    } catch (Exception e) {
+      // If anything goes wrong, default to rendering
+      EntityCulling.instance.renderedParticles++;
+      return false;
+    }
   }
 }

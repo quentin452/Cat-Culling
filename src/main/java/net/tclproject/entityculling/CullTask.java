@@ -4,10 +4,8 @@ import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 import com.logisticscraft.occlusionculling.util.Vec3d;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import java.lang.reflect.Field;
 import java.util.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EntityFX;
 import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
@@ -15,7 +13,6 @@ import net.minecraft.util.Vec3;
 import net.tclproject.entityculling.handlers.Config;
 import net.tclproject.entityculling.handlers.CullableEntityRegistry;
 import net.tclproject.entityculling.handlers.CullableEntityWrapper;
-import net.tclproject.entityculling.handlers.CullableParticleWrapper;
 
 public class CullTask implements Runnable {
 
@@ -25,8 +22,6 @@ public class CullTask implements Runnable {
 
   private final OcclusionCullingInstance culling;
 
-  // Reflection field for accessing EffectRenderer.fxLayers
-  private static Field fxLayersField;
   private final Minecraft client = Minecraft.getMinecraft();
   private final int sleepDelay = Config.sleepDelay;
   private final int hitboxLimit = Config.hitboxLimit;
@@ -46,61 +41,59 @@ public class CullTask implements Runnable {
 
   @Override
   public void run() {
-    while (running &&
-           client != null) { // not correct, but the running field is hidden
+    while (running && client != null) { // not correct, but the running field is hidden
       try {
         Thread.sleep(sleepDelay);
 
-        if (EntityCullingBase.enabled && client.theWorld != null &&
-            client.thePlayer != null && client.thePlayer.ticksExisted > 10 &&
-            client.renderViewEntity != null) {
+        if (EntityCullingBase.enabled
+            && client.theWorld != null
+            && client.thePlayer != null
+            && client.thePlayer.ticksExisted > 10
+            && client.renderViewEntity != null) {
           Vec3 cameraMC = null;
           if (Config.debugMode) {
             cameraMC = getPositionEyes(client.thePlayer, 0);
           } else {
             cameraMC = getCameraPos();
           }
-          if (requestCull ||
-              !(cameraMC.xCoord == lastPos.x && cameraMC.yCoord == lastPos.y &&
-                cameraMC.zCoord == lastPos.z)) {
+          if (requestCull
+              || !(cameraMC.xCoord == lastPos.x
+                  && cameraMC.yCoord == lastPos.y
+                  && cameraMC.zCoord == lastPos.z)) {
             long start = System.currentTimeMillis();
             requestCull = false;
             lastPos.set(cameraMC.xCoord, cameraMC.yCoord, cameraMC.zCoord);
             Vec3d camera = lastPos;
             culling.resetCache();
-            boolean noCulling = client.thePlayer.noClip ||
-                                client.gameSettings.thirdPersonView !=
-                                    0; // noClip is a 'spectator' check replacer
+            boolean noCulling =
+                client.thePlayer.noClip
+                    || client.gameSettings.thirdPersonView
+                        != 0; // noClip is a 'spectator' check replacer
             // (EtFuturum Requiem compat)
-            Iterator<TileEntity> iterator =
-                client.theWorld.loadedTileEntityList.iterator();
+            Iterator<TileEntity> iterator = client.theWorld.loadedTileEntityList.iterator();
             TileEntity entry;
             while (iterator.hasNext()) {
               try {
                 entry = iterator.next();
-              } catch (NullPointerException |
-                       ConcurrentModificationException ex) {
+              } catch (NullPointerException | ConcurrentModificationException ex) {
                 break; // We are not synced to the main thread, so NPE's/CME are
                 // allowed here and
                 // way less
                 // overhead probably than trying to sync stuff up for no really
                 // good reason
               }
-              if (unCullable.contains(
-                      entry.getBlockType().getUnlocalizedName())) {
+              if (unCullable.contains(entry.getBlockType().getUnlocalizedName())) {
                 continue;
               }
-              CullableEntityWrapper cullable =
-                  CullableEntityRegistry.getWrapper(entry);
+              CullableEntityWrapper cullable = CullableEntityRegistry.getWrapper(entry);
               if (!cullable.isForcedVisible()) {
                 if (noCulling) {
                   cullable.setCulled(false);
                   continue;
                 }
 
-                if (entry.getDistanceFrom(cameraMC.xCoord, cameraMC.yCoord,
-                                          cameraMC.zCoord) <
-                    64 * 64) { // 64 is the fixed max tile view distance
+                if (entry.getDistanceFrom(cameraMC.xCoord, cameraMC.yCoord, cameraMC.zCoord)
+                    < 64 * 64) { // 64 is the fixed max tile view distance
                   AxisAlignedBB boundingBox = entry.getRenderBoundingBox();
                   //									aabbMin.set(entry.xCoord,
                   // entry.yCoord, entry.zCoord); // to account
@@ -108,15 +101,13 @@ public class CullTask implements Runnable {
                   // unintended consequences
                   //								    aabbMax.set(entry.xCoord+1d,
                   // entry.yCoord+1d, entry.zCoord+1d);
-                  if (setBoxAndCheckLimits(cullable, boundingBox))
-                    continue;
+                  if (setBoxAndCheckLimits(cullable, boundingBox)) continue;
                   if (Config.debugMode) {
                     System.out.println(
-                        "Currently processing tileentity " +
-                        entry.getBlockType().getUnlocalizedName());
+                        "Currently processing tileentity "
+                            + entry.getBlockType().getUnlocalizedName());
                   }
-                  boolean visible =
-                      culling.isAABBVisible(aabbMin, aabbMax, camera);
+                  boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
                   //									System.out.println(visible
                   // + "," +
                   // entry.getBlockType().getUnlocalizedName());
@@ -125,13 +116,11 @@ public class CullTask implements Runnable {
               }
             }
             Entity entity = null;
-            Iterator<Entity> iterable =
-                client.theWorld.getLoadedEntityList().iterator();
+            Iterator<Entity> iterable = client.theWorld.getLoadedEntityList().iterator();
             while (iterable.hasNext()) {
               try {
                 entity = iterable.next();
-              } catch (NullPointerException |
-                       ConcurrentModificationException ex) {
+              } catch (NullPointerException | ConcurrentModificationException ex) {
                 break; // We are not synced to the main thread, so NPE's/CME are
                 // allowed here and
                 // way less
@@ -141,123 +130,27 @@ public class CullTask implements Runnable {
               if (entity == null) {
                 continue; // Not sure how this could happen
               }
-              CullableEntityWrapper cullable =
-                  CullableEntityRegistry.getWrapper(entity);
+              CullableEntityWrapper cullable = CullableEntityRegistry.getWrapper(entity);
               if (!cullable.isForcedVisible()) {
                 if (noCulling) {
                   cullable.setCulled(false);
                   continue;
                 }
-                if (getPositionVector(entity).squareDistanceTo(cameraMC) >
-                    Config.tracingDistance * Config.tracingDistance) {
+                if (getPositionVector(entity).squareDistanceTo(cameraMC)
+                    > Config.tracingDistance * Config.tracingDistance) {
                   cullable.setCulled(false); // If your entity view distance is
                   // larger than tracingDistance just
                   // render it
                   continue;
                 }
                 AxisAlignedBB boundingBox = entity.boundingBox;
-                if (setBoxAndCheckLimits(cullable, boundingBox))
-                  continue;
+                if (setBoxAndCheckLimits(cullable, boundingBox)) continue;
                 if (Config.debugMode) {
-                  System.out.println("Currently processing entity " +
-                                     entity.getCommandSenderName());
+                  System.out.println(
+                      "Currently processing entity " + entity.getCommandSenderName());
                 }
-                boolean visible =
-                    culling.isAABBVisible(aabbMin, aabbMax, camera);
+                boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
                 cullable.setCulled(!visible);
-              }
-            }
-
-            // Process particles
-            if (client.effectRenderer != null) {
-              try {
-
-                // Initialize reflection field if needed
-                if (fxLayersField == null) {
-                  // Essayons d'abord par le nom
-                  try {
-                    fxLayersField =
-                        client.effectRenderer.getClass().getDeclaredField(
-                            "fxLayers");
-                    fxLayersField.setAccessible(true);
-                  } catch (NoSuchFieldException e) {
-                    // Si on ne trouve pas par le nom, cherchons par le type
-                    for (Field field :
-                         client.effectRenderer.getClass().getDeclaredFields()) {
-                      if (field.getType().isArray() &&
-                          field.getType().getComponentType() == List.class) {
-                        fxLayersField = field;
-                        fxLayersField.setAccessible(true);
-                        break;
-                      }
-                    }
-                    if (fxLayersField == null) {
-                      throw new RuntimeException(
-                          "Could not find fxLayers field in EffectRenderer");
-                    }
-                  }
-                }
-
-                // Get all particle lists from EffectRenderer using reflection
-                @SuppressWarnings("unchecked")
-                List<EntityFX>[] fxLayers =
-                    (List<EntityFX>[])fxLayersField.get(client.effectRenderer);
-
-                for (int layer = 0; layer < fxLayers.length; layer++) {
-                  List<EntityFX> particles = fxLayers[layer];
-                  if (particles != null && !particles.isEmpty()) {
-                    Iterator<EntityFX> particleIterator = particles.iterator();
-                    while (particleIterator.hasNext()) {
-                      EntityFX particle = null;
-                      try {
-                        particle = particleIterator.next();
-                      } catch (NullPointerException |
-                               ConcurrentModificationException ex) {
-                        break; // We are not synced to the main thread
-                      }
-                      if (particle == null || particle.isDead) {
-                        continue;
-                      }
-                      CullableParticleWrapper cullable =
-                          CullableEntityRegistry.getWrapper(particle);
-                      if (Config.debugMode) {
-                        System.out.println("Currently processing particle at " +
-                                           particle.posX + "," + particle.posY +
-                                           "," + particle.posZ);
-                      }
-                      if (!cullable.isForcedVisible()) {
-                        if (noCulling) {
-                          cullable.setCulled(false);
-                          continue;
-                        }
-                        double dx = particle.posX - cameraMC.xCoord;
-                        double dy = particle.posY - cameraMC.yCoord;
-                        double dz = particle.posZ - cameraMC.zCoord;
-                        double distanceSq = dx * dx + dy * dy + dz * dz;
-                        if (distanceSq >
-                            Config.tracingDistance * Config.tracingDistance) {
-                          cullable.setCulled(
-                              false); // Too far to bother culling
-                          continue;
-                        }
-                        // Create a small bounding box for the particle
-                        double size = 0.2; // Most particles are small
-                        aabbMin.set(particle.posX - size, particle.posY - size,
-                                    particle.posZ - size);
-                        aabbMax.set(particle.posX + size, particle.posY + size,
-                                    particle.posZ + size);
-
-                        boolean visible =
-                            culling.isAABBVisible(aabbMin, aabbMax, camera);
-                        cullable.setCulled(!visible);
-                      }
-                    }
-                  }
-                }
-              } catch (Exception e) {
-                // If reflection fails, skip particle processing for this frame
-                System.err.println("Failed to access particle layers: " +
-                                   e.getMessage());
               }
             }
 
@@ -271,11 +164,10 @@ public class CullTask implements Runnable {
     System.out.println("Shutting down culling task!");
   }
 
-  private boolean setBoxAndCheckLimits(CullableEntityWrapper cullable,
-                                       AxisAlignedBB boundingBox) {
-    if (boundingBox.maxX - boundingBox.minX > hitboxLimit ||
-        boundingBox.maxY - boundingBox.minY > hitboxLimit ||
-        boundingBox.maxZ - boundingBox.minZ > hitboxLimit) {
+  private boolean setBoxAndCheckLimits(CullableEntityWrapper cullable, AxisAlignedBB boundingBox) {
+    if (boundingBox.maxX - boundingBox.minX > hitboxLimit
+        || boundingBox.maxY - boundingBox.minY > hitboxLimit
+        || boundingBox.maxZ - boundingBox.minZ > hitboxLimit) {
       cullable.setCulled(false); // To big to bother to cull
       return true;
     }
@@ -291,13 +183,12 @@ public class CullTask implements Runnable {
   @SideOnly(Side.CLIENT)
   public Vec3 getPositionEyes(Entity e, float partialTicks) {
     if (partialTicks == 1.0F) {
-      return Vec3.createVectorHelper(e.posX, e.posY + (double)e.getEyeHeight(),
-                                     e.posZ);
+      return Vec3.createVectorHelper(e.posX, e.posY + (double) e.getEyeHeight(), e.posZ);
     } else {
-      double d0 = e.prevPosX + (e.posX - e.prevPosX) * (double)partialTicks;
-      double d1 = e.prevPosY + (e.posY - e.prevPosY) * (double)partialTicks +
-                  (double)e.getEyeHeight();
-      double d2 = e.prevPosZ + (e.posZ - e.prevPosZ) * (double)partialTicks;
+      double d0 = e.prevPosX + (e.posX - e.prevPosX) * (double) partialTicks;
+      double d1 =
+          e.prevPosY + (e.posY - e.prevPosY) * (double) partialTicks + (double) e.getEyeHeight();
+      double d2 = e.prevPosZ + (e.posZ - e.prevPosZ) * (double) partialTicks;
       return Vec3.createVectorHelper(d0, d1, d2);
     }
   }
@@ -356,5 +247,7 @@ public class CullTask implements Runnable {
   }
 
   /** Stop the culling thread safely. */
-  public void shutdown() { this.running = false; }
+  public void shutdown() {
+    this.running = false;
+  }
 }
