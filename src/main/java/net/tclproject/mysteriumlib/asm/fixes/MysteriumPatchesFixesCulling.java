@@ -5,6 +5,7 @@ import static net.minecraft.client.renderer.entity.RendererLivingEntity.NAME_TAG
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.Render;
@@ -15,9 +16,11 @@ import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.tileentity.TileEntity;
 import net.tclproject.entityculling.EntityCulling;
+import net.tclproject.entityculling.EntityCullingBase;
 import net.tclproject.entityculling.handlers.Config;
 import net.tclproject.entityculling.handlers.CullableEntityRegistry;
 import net.tclproject.entityculling.handlers.CullableEntityWrapper;
+import net.tclproject.entityculling.handlers.CullableParticleWrapper;
 import net.tclproject.mysteriumlib.asm.annotations.EnumReturnSetting;
 import net.tclproject.mysteriumlib.asm.annotations.Fix;
 import org.lwjgl.opengl.GL11;
@@ -33,7 +36,8 @@ public class MysteriumPatchesFixesCulling {
       double p_147549_6_,
       float p_147549_8_) {
     CullableEntityWrapper cullable = CullableEntityRegistry.getWrapper(p_147549_1_);
-    //        System.out.println(cullable.isForcedVisible() + "," + cullable.isCulled() + "," +
+    //        System.out.println(cullable.isForcedVisible() + "," +
+    //        cullable.isCulled() + "," +
     // p_147549_1_.getBlockType().getUnlocalizedName());
     if (!cullable.isForcedVisible() && cullable.isCulled()) {
       EntityCulling.instance.skippedBlockEntities++;
@@ -59,8 +63,8 @@ public class MysteriumPatchesFixesCulling {
       if (entity instanceof EntityLivingBase) {
         if (Config.renderNametagsThroughWalls && shouldShowName((EntityLivingBase) entity)) {
           renderNameTag((EntityLivingBase) entity, p_doRenderEntity_2_, d1, d2);
-          // entityRenderer.doRender(entity, entity.posX, entity.posY, entity.posZ, tickDelta,
-          // tickDelta);
+          // entityRenderer.doRender(entity, entity.posX, entity.posY,
+          // entity.posZ, tickDelta, tickDelta);
         }
       }
       EntityCulling.instance.skippedEntities++;
@@ -198,38 +202,73 @@ public class MysteriumPatchesFixesCulling {
     return shouldShow;
   }
 
-  //	private static final MethodHandle dormantChunkCacheGet = createDormantChunkCacheGet();
+  //	private static final MethodHandle dormantChunkCacheGet =
+  // createDormantChunkCacheGet();
   //
   //	private static MethodHandle createDormantChunkCacheGet() {
   //		try {
-  //			Field field2 = ForgeChunkManager.class.getDeclaredField("dormantChunkCache");
+  //			Field field2 =
+  // ForgeChunkManager.class.getDeclaredField("dormantChunkCache");
   //			field2.setAccessible(true);
-  //			return MethodHandles.publicLookup().unreflectGetter(field2);
-  //		} catch (Exception e) {
-  //			TEResetFix.logger.error("Cannot get dormantChunkCache. The mod will not work properly and you
-  // should report this as a bug.", e);
+  //			return
+  // MethodHandles.publicLookup().unreflectGetter(field2); 		} catch
+  // (Exception e) { 			TEResetFix.logger.error("Cannot get
+  // dormantChunkCache. The mod will not work properly and you should report
+  // this as a bug.", e);
   //			return null;
   //		}
   //	}
 
   //	@Fix(insertOnExit=true)
-  //	public static void fetchDormantChunk(ForgeChunkManager fcm, long coords, World world)
+  //	public static void fetchDormantChunk(ForgeChunkManager fcm, long coords,
+  // World world)
   //	{
   //		try {
   //			Map<World, Cache<Long, Chunk>> dormantChunkCache = null;
   //			try {
-  //				dormantChunkCache = (Map<World, Cache<Long, Chunk>>) dormantChunkCacheGet.invokeExact();
-  //			} catch (Throwable e) {
-  //				TEResetFix.logger.error("Cannot invoke dormantChunkCache! The mod will not work properly and
+  //				dormantChunkCache = (Map<World, Cache<Long,
+  // Chunk>>) dormantChunkCacheGet.invokeExact(); 			} catch
+  // (Throwable e) {
+  //				TEResetFix.logger.error("Cannot invoke
+  // dormantChunkCache! The mod will not work properly and
   // you should report this as a bug.", e);
   //			}
   //			Cache<Long, Chunk> cache = dormantChunkCache.get(world);
   //			if (cache == null) return;
   //			cache.invalidate(coords);
   //		} catch (Exception e) {
-  //			TEResetFix.logger.error("Something went wrong. The mod will not work properly and you should
+  //			TEResetFix.logger.error("Something went wrong. The mod
+  // will not work properly and you should
   // report this as a bug.", e);
   //		}
   //	}
 
+  // Particle culling patch for individual particle rendering
+  @Fix(returnSetting = EnumReturnSetting.ON_TRUE)
+  public static boolean func_70539_a(
+      EntityFX particle,
+      Tessellator tessellator,
+      float partialTicks,
+      float cosYaw,
+      float cosPitch,
+      float sinYaw,
+      float sinSinPitch,
+      float cosSinPitch) {
+    // Check if particle culling is enabled
+    if (!EntityCullingBase.enabled) {
+      return false; // Continue normal rendering
+    }
+
+    CullableParticleWrapper cullable = CullableEntityRegistry.getWrapper(particle);
+
+    if (!cullable.isForcedVisible() && cullable.isCulled()) {
+      // Skip rendering this particle by returning true (which skips the
+      // original method)
+      return true;
+    }
+
+    // Continue normal rendering
+    EntityCulling.instance.renderedParticles++;
+    return false;
+  }
 }

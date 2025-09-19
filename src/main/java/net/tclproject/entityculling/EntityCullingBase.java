@@ -23,6 +23,8 @@ public abstract class EntityCullingBase {
   public int skippedBlockEntities = 0;
   public int renderedEntities = 0;
   public int skippedEntities = 0;
+  public int renderedParticles = 0;
+  public int skippedParticles = 0;
   // public int tickedEntities = 0;
   // public int skippedEntityTicks = 0;
 
@@ -40,7 +42,7 @@ public abstract class EntityCullingBase {
     cullThread.setUncaughtExceptionHandler(
         (thread, ex) -> {
           System.out.println(
-              "The CullingThread has crashed! Please report the following stacktrace!");
+              "The CullingThread has crashed! Please report the " + "following stacktrace!");
           ex.printStackTrace();
         });
     cullThread.start();
@@ -59,13 +61,15 @@ public abstract class EntityCullingBase {
       EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
       if (enabled) {
         if (player != null) {
-          // list.add("[Culling] Ticked Entities: " + lastTickedEntities + " Skipped: " +
-          // lastSkippedEntityTicks);
+          // list.add("[Culling] Ticked Entities: " + lastTickedEntities + "
+          // Skipped: " + lastSkippedEntityTicks);
           player.addChatMessage(new ChatComponentText("Culling on"));
           EntityCulling.instance.renderedBlockEntities = 0;
           EntityCulling.instance.skippedBlockEntities = 0;
           EntityCulling.instance.renderedEntities = 0;
           EntityCulling.instance.skippedEntities = 0;
+          EntityCulling.instance.renderedParticles = 0;
+          EntityCulling.instance.skippedParticles = 0;
         }
       } else {
         if (player != null) {
@@ -84,6 +88,12 @@ public abstract class EntityCullingBase {
                       + EntityCulling.instance.renderedEntities
                       + " Skipped: "
                       + EntityCulling.instance.skippedEntities));
+          player.addChatMessage(
+              new ChatComponentText(
+                  "[Culling] Rendered Particles: "
+                      + EntityCulling.instance.renderedParticles
+                      + " Skipped: "
+                      + EntityCulling.instance.skippedParticles));
 
           player.addChatMessage(new ChatComponentText("Culling off"));
         }
