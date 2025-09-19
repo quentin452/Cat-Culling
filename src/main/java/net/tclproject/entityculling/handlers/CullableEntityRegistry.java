@@ -11,17 +11,19 @@ public class CullableEntityRegistry {
   //    HashMap<>(); public static Map<TileEntity, CullableEntityWrapper>
   //    tileWrappers = new HashMap<>();
 
-  private static ConcurrentMap<TileEntity, WeakReference<CullableEntityWrapper>>
-      tileWrappers = new MapMaker().weakKeys().concurrencyLevel(3).makeMap();
-  private static ConcurrentMap<Entity, WeakReference<CullableEntityWrapper>>
-      entityWrappers = new MapMaker().weakKeys().concurrencyLevel(3).makeMap();
+  private static ConcurrentMap<TileEntity, WeakReference<CullableEntityWrapper>> tileWrappers =
+      new MapMaker().weakKeys().concurrencyLevel(3).makeMap();
+  private static ConcurrentMap<Entity, WeakReference<CullableEntityWrapper>> entityWrappers =
+      new MapMaker().weakKeys().concurrencyLevel(3).makeMap();
 
   public static CullableEntityWrapper getWrapper(Entity e) {
     WeakReference<CullableEntityWrapper> ref =
-        entityWrappers.computeIfAbsent(e, entity -> {
-          CullableEntityWrapper wrapper = new CullableEntityWrapper(entity);
-          return new WeakReference<>(wrapper);
-        });
+        entityWrappers.computeIfAbsent(
+            e,
+            entity -> {
+              CullableEntityWrapper wrapper = new CullableEntityWrapper(entity);
+              return new WeakReference<>(wrapper);
+            });
     CullableEntityWrapper wrapper = ref.get();
     if (wrapper == null) {
       // The reference was collected, create a new wrapper
@@ -33,10 +35,12 @@ public class CullableEntityRegistry {
 
   public static CullableEntityWrapper getWrapper(TileEntity e) {
     WeakReference<CullableEntityWrapper> ref =
-        tileWrappers.computeIfAbsent(e, tileEntity -> {
-          CullableEntityWrapper wrapper = new CullableEntityWrapper(tileEntity);
-          return new WeakReference<>(wrapper);
-        });
+        tileWrappers.computeIfAbsent(
+            e,
+            tileEntity -> {
+              CullableEntityWrapper wrapper = new CullableEntityWrapper(tileEntity);
+              return new WeakReference<>(wrapper);
+            });
     CullableEntityWrapper wrapper = ref.get();
     if (wrapper == null) {
       // The reference was collected, create a new wrapper
@@ -53,9 +57,13 @@ public class CullableEntityRegistry {
   }
 
   // Get current map sizes for monitoring
-  public static int getEntityWrappersCount() { return entityWrappers.size(); }
+  public static int getEntityWrappersCount() {
+    return entityWrappers.size();
+  }
 
-  public static int getTileWrappersCount() { return tileWrappers.size(); }
+  public static int getTileWrappersCount() {
+    return tileWrappers.size();
+  }
 
   //    public static void cleanupWrappers() { // test if weak keys don't work
   //    properly

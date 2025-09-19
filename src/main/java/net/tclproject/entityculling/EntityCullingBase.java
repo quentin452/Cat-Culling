@@ -30,10 +30,7 @@ public abstract class EntityCullingBase {
     if (Config.aggressiveMode) {
       culling =
           new OcclusionCullingInstance(
-              Config.tracingDistance,
-              new Provider(),
-              new NoOpOcclusionCache(),
-              0);
+              Config.tracingDistance, new Provider(), new NoOpOcclusionCache(), 0);
     } else {
       culling = new OcclusionCullingInstance(Config.tracingDistance, new Provider());
     }

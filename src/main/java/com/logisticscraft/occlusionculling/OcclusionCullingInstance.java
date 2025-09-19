@@ -31,6 +31,10 @@ public class OcclusionCullingInstance {
   private boolean allowRayChecks = false;
   private final int[] lastHitBlock = new int[3];
 
+  // Reusable Vec3d objects to avoid constant allocation
+  private final Vec3d tempVec1 = new Vec3d(0, 0, 0);
+  private final Vec3d tempVec2 = new Vec3d(0, 0, 0);
+
   public OcclusionCullingInstance(int maxDistance, DataProvider provider) {
     this(maxDistance, provider, new NoOpOcclusionCache(), 0.5);
   }
@@ -226,7 +230,7 @@ public class OcclusionCullingInstance {
   }
 
   private boolean rayIntersection(int[] b, Vec3d rayOrigin, Vec3d rayDir) {
-    Vec3d rInv = new Vec3d(1, 1, 1).div(rayDir);
+    Vec3d rInv = tempVec1.setAndDiv(1, 1, 1, rayDir);
 
     double t1 = (b[0] - rayOrigin.x) * rInv.x;
     double t2 = (b[0] + 1 - rayOrigin.x) * rInv.x;
@@ -238,7 +242,8 @@ public class OcclusionCullingInstance {
     double tmin = Math.max(Math.max(Math.min(t1, t2), Math.min(t3, t4)), Math.min(t5, t6));
     double tmax = Math.min(Math.min(Math.max(t1, t2), Math.max(t3, t4)), Math.max(t5, t6));
 
-    // if tmax > 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+    // if tmax > 0, ray (line) is intersecting AABB, but the whole AABB is
+    // behind us
     if (tmax > 0) {
       return false;
     }
@@ -274,7 +279,7 @@ public class OcclusionCullingInstance {
 
       if (allowRayChecks
           && rayIntersection(
-              lastHitBlock, start, new Vec3d(relativeX, relativeY, relativeZ).normalize())) {
+              lastHitBlock, start, tempVec2.setAndNormalize(relativeX, relativeY, relativeZ))) {
         continue;
       }
 
@@ -286,8 +291,8 @@ public class OcclusionCullingInstance {
       // distance between horizontal intersection points with cell border as a
       // fraction of the total Vec3d length
       double dimFracX = 1f / dimensionX;
-      // distance between vertical intersection points with cell border as a fraction
-      // of the total Vec3d length
+      // distance between vertical intersection points with cell border as a
+      // fraction of the total Vec3d length
       double dimFracY = 1f / dimensionY;
       double dimFracZ = 1f / dimensionZ;
 
@@ -298,15 +303,17 @@ public class OcclusionCullingInstance {
       // determines the direction of the next cell (horizontally / vertically)
       int x_inc, y_inc, z_inc;
 
-      // the distance to the next horizontal / vertical intersection point with a cell
-      // border as a fraction of the total Vec3d length
+      // the distance to the next horizontal / vertical intersection point with
+      // a cell border as a fraction of the total Vec3d length
       double t_next_y, t_next_x, t_next_z;
 
       if (dimensionX == 0f) {
         x_inc = 0;
-        t_next_x = dimFracX; // don't increment horizontally because the Vec3d is perfectly vertical
+        t_next_x = dimFracX; // don't increment horizontally because the Vec3d
+        // is perfectly vertical
       } else if (target.x > start.x) {
-        x_inc = 1; // target point is horizontally greater than starting point so increment every
+        x_inc = 1; // target point is horizontally greater than starting point
+        // so increment every
         // step by 1
         intersectCount +=
             MathUtilities.floor(target.x) - x; // increment total amount of intersecting cells
@@ -315,7 +322,8 @@ public class OcclusionCullingInstance {
         // point based on the position inside
         // the first cell
       } else {
-        x_inc = -1; // target point is horizontally smaller than starting point so reduce every step
+        x_inc = -1; // target point is horizontally smaller than starting point
+        // so reduce every step
         // by 1
         intersectCount +=
             x - MathUtilities.floor(target.x); // increment total amount of intersecting cells
@@ -327,9 +335,11 @@ public class OcclusionCullingInstance {
 
       if (dimensionY == 0f) {
         y_inc = 0;
-        t_next_y = dimFracY; // don't increment vertically because the Vec3d is perfectly horizontal
+        t_next_y = dimFracY; // don't increment vertically because the Vec3d is
+        // perfectly horizontal
       } else if (target.y > start.y) {
-        y_inc = 1; // target point is vertically greater than starting point so increment every
+        y_inc = 1; // target point is vertically greater than starting point so
+        // increment every
         // step by 1
         intersectCount +=
             MathUtilities.floor(target.y) - y; // increment total amount of intersecting cells
@@ -338,7 +348,8 @@ public class OcclusionCullingInstance {
         // point based on the position inside
         // the first cell
       } else {
-        y_inc = -1; // target point is vertically smaller than starting point so reduce every step
+        y_inc = -1; // target point is vertically smaller than starting point so
+        // reduce every step
         // by 1
         intersectCount +=
             y - MathUtilities.floor(target.y); // increment total amount of intersecting cells
@@ -350,9 +361,11 @@ public class OcclusionCullingInstance {
 
       if (dimensionZ == 0f) {
         z_inc = 0;
-        t_next_z = dimFracZ; // don't increment vertically because the Vec3d is perfectly horizontal
+        t_next_z = dimFracZ; // don't increment vertically because the Vec3d is
+        // perfectly horizontal
       } else if (target.z > start.z) {
-        z_inc = 1; // target point is vertically greater than starting point so increment every
+        z_inc = 1; // target point is vertically greater than starting point so
+        // increment every
         // step by 1
         intersectCount +=
             MathUtilities.floor(target.z) - z; // increment total amount of intersecting cells
@@ -361,7 +374,8 @@ public class OcclusionCullingInstance {
         // point based on the position inside
         // the first cell
       } else {
-        z_inc = -1; // target point is vertically smaller than starting point so reduce every step
+        z_inc = -1; // target point is vertically smaller than starting point so
+        // reduce every step
         // by 1
         intersectCount +=
             z - MathUtilities.floor(target.z); // increment total amount of intersecting cells
@@ -449,9 +463,11 @@ public class OcclusionCullingInstance {
       }
 
       if (t_next_y < t_next_x
-          && t_next_y < t_next_z) { // next cell is upwards/downwards because the distance to
+          && t_next_y < t_next_z) { // next cell is upwards/downwards because the
+        // distance to
         // the next vertical
-        // intersection point is smaller than to the next horizontal intersection point
+        // intersection point is smaller than to the next horizontal
+        // intersection point
         currentY += y_inc; // move up/down
         t_next_y += distInY; // update next vertical intersection point
       } else if (t_next_x < t_next_y && t_next_x < t_next_z) { // next cell is right/left

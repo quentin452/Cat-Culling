@@ -51,6 +51,20 @@ public class Vec3d {
     return this;
   }
 
+  public Vec3d setAndDiv(double x, double y, double z, Vec3d divisor) {
+    this.x = x / divisor.x;
+    this.y = y / divisor.y;
+    this.z = z / divisor.z;
+    return this;
+  }
+
+  public Vec3d setAndNormalize(double x, double y, double z) {
+    this.x = x;
+    this.y = y;
+    this.z = z;
+    return normalize();
+  }
+
   public boolean equals(Object other) {
     if (this == other) {
       return true;
