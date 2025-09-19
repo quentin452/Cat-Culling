@@ -81,10 +81,8 @@ public class OcclusionCullingInstance {
               return true;
             }
 
-            if (cachedValue != 0) {
-              // was checked and it wasn't visible
-              skipList.set(id);
-            }
+            // With 1-bit cache, we only cache visible positions
+            // All other positions (cachedValue == 0) need to be checked
             id++;
           }
         }
@@ -418,16 +416,8 @@ public class OcclusionCullingInstance {
     for (; n > 1; n--) { // n-1 times because we don't want to check the last block
       // towards - where from
 
-      // get cached value, 0 means uncached (default)
+      // get cached value, 0 means uncached (default), 1 means visible
       int cVal = getCacheValue(currentX, currentY, currentZ);
-
-      if (cVal == 2) {
-        // block cached as occluding, stop ray
-        lastHitBlock[0] = currentX;
-        lastHitBlock[1] = currentY;
-        lastHitBlock[2] = currentZ;
-        return false;
-      }
 
       if (cVal == 0) {
         // save current cell
@@ -465,7 +455,7 @@ public class OcclusionCullingInstance {
     return true;
   }
 
-  // -1 = invalid location, 0 = not checked yet, 1 = visible, 2 = occluding
+  // -1 = invalid location, 0 = unchecked, 1 = visible
   private int getCacheValue(int x, int y, int z) {
     x -= cameraPos[0];
     y -= cameraPos[1];
