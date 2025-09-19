@@ -8,6 +8,7 @@ import net.tclproject.entityculling.config.EntityCullingUnofficialConfig;
 import com.falsepattern.lib.mixin.IMixin;
 import com.falsepattern.lib.mixin.ITargetedMod;
 
+import cpw.mods.fml.relauncher.Side;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -15,6 +16,11 @@ import lombok.RequiredArgsConstructor;
 public enum Mixin implements IMixin {
 
     client_TestMixin(Side.CLIENT, m -> EntityCullingUnofficialConfig.fixModdedParticles, "TestMixin"),
+
+    // Entity Culling Mixins
+    client_TileEntityRendererDispatcherMixin(Side.CLIENT, m -> true, "TileEntityRendererDispatcherMixin"),
+    client_RenderManagerMixin(Side.CLIENT, m -> true, "RenderManagerMixin"),
+    client_EntityFXMixin(Side.CLIENT, m -> EntityCullingUnofficialConfig.fixModdedParticles, "EntityFXMixin"),
 
     // MOD-FILTERED MIXINS
 
