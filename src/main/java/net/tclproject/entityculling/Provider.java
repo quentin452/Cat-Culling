@@ -17,6 +17,9 @@ public class Provider implements DataProvider {
 
   @Override
   public boolean isOpaqueFullCube(int x, int y, int z) {
+    if (world == null) {
+      return false; // Safe fallback when world is null
+    }
     return world.getBlock(x, y, z).isOpaqueCube();
   }
 
