@@ -9,7 +9,7 @@ public class Config {
 
   public static boolean renderNametagsThroughWalls = true;
   public static String[] blockEntityWhitelist;
-  public static int tracingDistance = 128;
+  public static int tracingDistance = 64;
   public static boolean debugMode = false;
   public static boolean aggressiveMode = false;
   public static int sleepDelay = 10;
@@ -27,7 +27,7 @@ public class Config {
         config.getInt(
             "tracingDistance",
             GENERIC_CATEGORY,
-            128,
+            64,
             Short.MIN_VALUE,
             Short.MAX_VALUE,
             "128 works out to be roughly equal to minecraft's defaults");
@@ -38,7 +38,8 @@ public class Config {
             10,
             Short.MIN_VALUE,
             Short.MAX_VALUE,
-            "The delay between async pathtracing runs that update which TEs need to be culled");
+            "The delay between async pathtracing runs "
+                + "that update which TEs need to be culled");
     hitboxLimit =
         config.getInt(
             "hitboxLimit",
@@ -46,7 +47,8 @@ public class Config {
             50,
             Short.MIN_VALUE,
             Short.MAX_VALUE,
-            "Limit to a hitbox (anything larger than this will be considered too big to cull)");
+            "Limit to a hitbox (anything larger than "
+                + "this will be considered too big to cull)");
 
     String blockEntityWhitelistString =
         config
@@ -54,7 +56,8 @@ public class Config {
                 GENERIC_CATEGORY,
                 "entityWhitelist",
                 "tile.beacon",
-                "Comma-separated list of entities and blocks whitelisted from this mod, e.g. tile.beacon")
+                "Comma-separated list of entities and blocks whitelisted "
+                    + "from this mod, e.g. tile.beacon")
             .getString();
     blockEntityWhitelist = blockEntityWhitelistString.split(",");
 
@@ -69,7 +72,9 @@ public class Config {
             "aggressiveMode",
             GENERIC_CATEGORY,
             false,
-            "Aggressively calculate bounding box culling with no breathing room. May result in additional performance at the cost of stability and/or graphics issues.");
+            "Aggressively calculate bounding box culling with no breathing room. "
+                + "May result in additional performance at the cost of stability "
+                + "and/or graphics issues.");
 
     config.save();
   }
