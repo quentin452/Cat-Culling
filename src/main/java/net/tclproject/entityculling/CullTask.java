@@ -16,6 +16,8 @@ import net.tclproject.entityculling.handlers.CullableEntityWrapper;
 
 public class CullTask implements Runnable {
 
+  private volatile boolean running = true;
+
   public boolean requestCull = false;
 
   private final OcclusionCullingInstance culling;
@@ -38,7 +40,7 @@ public class CullTask implements Runnable {
 
   @Override
   public void run() {
-    while (client != null) { // not correct, but the running field is hidden
+    while (running && client != null) { // not correct, but the running field is hidden
       try {
         Thread.sleep(sleepDelay);
 
@@ -225,5 +227,11 @@ public class CullTask implements Runnable {
     //        Vec3 vec = new Vec3(newPosX, newPosY, newPosZ);
     //        System.out.println(newPosX + " " + newPosY + " " + newPosZ);
     //        return vec;
+  }
+
+
+  /** Stop the culling thread safely. */
+  public void shutdown() { 
+    this.running = false; 
   }
 }

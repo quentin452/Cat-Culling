@@ -72,4 +72,11 @@ public class CullableEntityRegistry {
   //        tileWrappers.keySet().removeIf(v ->
   // !Minecraft.getMinecraft().theWorld.loadedTileEntityList.contains(v));
   //    }
+
+
+  /** Clear all wrapper caches to prevent classloader/world retention on disconnect. */
+  public static void clear() {
+    try { tileWrappers.clear(); } catch (Throwable ignored) {}
+    try { entityWrappers.clear(); } catch (Throwable ignored) {}
+  }
 }
