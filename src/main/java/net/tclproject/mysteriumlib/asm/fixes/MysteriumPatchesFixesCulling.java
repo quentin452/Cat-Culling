@@ -29,6 +29,11 @@ import org.lwjgl.opengl.GL11;
 
 public class MysteriumPatchesFixesCulling {
 
+  // Reusable Vec3d instances to avoid allocations
+  private static final Vec3d TEMP_CAMERA = new Vec3d(0, 0, 0);
+  private static final Vec3d TEMP_AABB_MIN = new Vec3d(0, 0, 0);
+  private static final Vec3d TEMP_AABB_MAX = new Vec3d(0, 0, 0);
+
   @Fix(returnSetting = EnumReturnSetting.ON_TRUE)
   public static boolean func_147549_a(
       TileEntityRendererDispatcher tileEntityRendererDispatcher,
@@ -287,7 +292,7 @@ public class MysteriumPatchesFixesCulling {
 
       // Get camera position
       Vec3 cameraPos = mc.renderViewEntity.getPosition(partialTicks);
-      Vec3d camera = new Vec3d(cameraPos.xCoord, cameraPos.yCoord, cameraPos.zCoord);
+      TEMP_CAMERA.set(cameraPos.xCoord, cameraPos.yCoord, cameraPos.zCoord);
 
       // Check distance limit
       double dx = particle.posX - cameraPos.xCoord;
@@ -302,11 +307,12 @@ public class MysteriumPatchesFixesCulling {
 
       // Create bounding box for particle (slightly larger to avoid edge cases)
       double size = 0.3; // Slightly larger than CullTask to avoid leaks
-      Vec3d aabbMin = new Vec3d(particle.posX - size, particle.posY - size, particle.posZ - size);
-      Vec3d aabbMax = new Vec3d(particle.posX + size, particle.posY + size, particle.posZ + size);
+      TEMP_AABB_MIN.set(particle.posX - size, particle.posY - size, particle.posZ - size);
+      TEMP_AABB_MAX.set(particle.posX + size, particle.posY + size, particle.posZ + size);
 
       // Test visibility
-      boolean visible = EntityCulling.instance.culling.isAABBVisible(aabbMin, aabbMax, camera);
+      boolean visible =
+          EntityCulling.instance.culling.isAABBVisible(TEMP_AABB_MIN, TEMP_AABB_MAX, TEMP_CAMERA);
 
       if (!visible) {
         // Update wrapper state for consistency with CullTask
