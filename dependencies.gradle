@@ -56,16 +56,10 @@ dependencies {
     implementation("org.joml:joml:1.10.5")
 
     implementation 'org.apache.logging.log4j:log4j-core:2.16.0'
-
-    compileOnly("com.github.GTNewHorizons:ThaumicHorizons:1.6.3:dev")
-    compileOnly("com.github.GTNewHorizons:HoloInventory:2.4.12-GTNH:dev")
-
-        implementation "curse.maven:fplib-665627:4905393-deobf-sources-api"
-
 }
 
 jar {
     manifest {
-        attributes 'FMLAT': 'optimizationsandtweaks_at.cfg'
+        attributes 'FMLAT': 'entityculling_at.cfg'
     }
 }
