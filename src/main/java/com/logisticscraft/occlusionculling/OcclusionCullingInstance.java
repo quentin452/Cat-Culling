@@ -491,7 +491,14 @@ public class OcclusionCullingInstance {
         x -= cameraPos[0];
         y -= cameraPos[1];
         z -= cameraPos[2];
-        if (Math.abs(x) > reach - 2 || Math.abs(y) > reach - 2 || Math.abs(z) > reach - 2) {
+        
+        // Early bounds check with single condition  
+        int absX = Math.abs(x);
+        int absY = Math.abs(y);
+        int absZ = Math.abs(z);
+        int reachLimit = reach - 2;
+        
+        if (absX > reachLimit || absY > reachLimit || absZ > reachLimit) {
             return -1;
         }
 

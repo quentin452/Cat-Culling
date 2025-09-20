@@ -44,17 +44,22 @@ public class Vec3d {
     }
 
     public Vec3d normalize() {
-        double mag = Math.sqrt(x * x + y * y + z * z);
-        this.x /= mag;
-        this.y /= mag;
-        this.z /= mag;
+        double magSq = x * x + y * y + z * z;
+        if (magSq == 0.0) {
+            return this; // Avoid division by zero
+        }
+        double invMag = 1.0 / Math.sqrt(magSq);
+        this.x *= invMag;
+        this.y *= invMag;
+        this.z *= invMag;
         return this;
     }
 
     public Vec3d setAndDiv(double x, double y, double z, Vec3d divisor) {
-        this.x = x / divisor.x;
-        this.y = y / divisor.y;
-        this.z = z / divisor.z;
+        // Check for division by zero to avoid NaN values
+        this.x = (divisor.x != 0.0) ? x / divisor.x : Double.MAX_VALUE;
+        this.y = (divisor.y != 0.0) ? y / divisor.y : Double.MAX_VALUE;
+        this.z = (divisor.z != 0.0) ? z / divisor.z : Double.MAX_VALUE;
         return this;
     }
 
@@ -62,7 +67,36 @@ public class Vec3d {
         this.x = x;
         this.y = y;
         this.z = z;
-        return normalize();
+        
+        // Inline normalization for better performance
+        double magSq = x * x + y * y + z * z;
+        if (magSq == 0.0) {
+            return this; // Avoid division by zero
+        }
+        double invMag = 1.0 / Math.sqrt(magSq);
+        this.x *= invMag;
+        this.y *= invMag;
+        this.z *= invMag;
+        return this;
+    }
+    
+    // Additional utility methods for performance optimization
+    public double distanceSquared(Vec3d other) {
+        double dx = this.x - other.x;
+        double dy = this.y - other.y;
+        double dz = this.z - other.z;
+        return dx * dx + dy * dy + dz * dz;
+    }
+    
+    public double distanceSquared(double ox, double oy, double oz) {
+        double dx = this.x - ox;
+        double dy = this.y - oy;
+        double dz = this.z - oz;
+        return dx * dx + dy * dy + dz * dz;
+    }
+    
+    public double magnitudeSquared() {
+        return x * x + y * y + z * z;
     }
 
     public boolean equals(Object other) {
