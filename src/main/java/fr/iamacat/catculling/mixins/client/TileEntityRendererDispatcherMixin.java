@@ -1,30 +1,31 @@
-package net.tclproject.entityculling.mixins.client;
+package fr.iamacat.catculling.mixins.client;
 
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.tileentity.TileEntity;
-import net.tclproject.entityculling.EntityCulling;
-import net.tclproject.entityculling.handlers.CullableEntityRegistry;
-import net.tclproject.entityculling.handlers.CullableEntityWrapper;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import fr.iamacat.catculling.CatCullingBase;
+import fr.iamacat.catculling.handlers.CullableEntityRegistry;
+import fr.iamacat.catculling.handlers.CullableEntityWrapper;
+
 @Mixin(TileEntityRendererDispatcher.class)
 public class TileEntityRendererDispatcherMixin {
 
     @Inject(method = "func_147549_a", at = @At("HEAD"), cancellable = true)
-    private void entityculling$cullTileEntity(TileEntity tileEntity, double x, double y, double z, float partialTicks,
+    private void catculling$cullTileEntity(TileEntity tileEntity, double x, double y, double z, float partialTicks,
         CallbackInfo ci) {
         CullableEntityWrapper cullable = CullableEntityRegistry.getWrapper(tileEntity);
 
         if (!cullable.isForcedVisible() && cullable.isCulled()) {
-            EntityCulling.instance.skippedBlockEntities++;
+            CatCullingBase.instance.skippedBlockEntities++;
             ci.cancel();
             return;
         }
 
-        EntityCulling.instance.renderedBlockEntities++;
+        CatCullingBase.instance.renderedBlockEntities++;
     }
 }

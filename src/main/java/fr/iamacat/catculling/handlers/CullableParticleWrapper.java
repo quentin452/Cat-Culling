@@ -1,34 +1,23 @@
-package net.tclproject.entityculling.handlers;
+package fr.iamacat.catculling.handlers;
 
-import net.minecraft.entity.Entity;
-import net.minecraft.tileentity.TileEntity;
-import net.tclproject.entityculling.EntityCullingBase;
+import net.minecraft.client.particle.EntityFX;
 
-public class CullableEntityWrapper {
+import fr.iamacat.catculling.EntityCullingBase;
+
+public class CullableParticleWrapper {
 
     private long lasttime = 0;
     private boolean culled = false;
     private boolean outOfCamera = false;
 
-    public Entity entity;
-    public TileEntity tileEntity;
+    public EntityFX particle;
 
-    public CullableEntityWrapper(Entity e) {
-        entity = e;
-        tileEntity = null;
+    public CullableParticleWrapper(EntityFX particle) {
+        this.particle = particle;
     }
 
-    public CullableEntityWrapper(TileEntity e) {
-        tileEntity = e;
-        entity = null;
-    }
-
-    public boolean hasTile() {
-        return tileEntity != null;
-    }
-
-    public boolean hasEntity() {
-        return entity != null;
+    public boolean hasParticle() {
+        return particle != null;
     }
 
     public void setTimeout() {
@@ -56,7 +45,6 @@ public class CullableEntityWrapper {
     }
 
     public boolean isOutOfCamera() {
-        if (!EntityCullingBase.enabled) return false;
         return outOfCamera;
     }
 }

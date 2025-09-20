@@ -1,2 +1,2 @@
-text.entityculling.title=EntityCulling
-key.entityculling.toggle=Debug toggle culling
+text.catculling.title=CatCullingBase
+key.catculling.toggle=Debug toggle culling

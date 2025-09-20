@@ -1,4 +1,4 @@
 Manifest-Version: 1.0
 FMLCorePluginContainsFMLMod: true
-FMLCorePlugin: net.tclproject.mysteriumlib.asm.fixes.MysteriumPatchesF
+FMLCorePlugin: fr.iamacat.mysteriumlib.asm.fixes.MysteriumPatchesF
  ixLoaderCulling

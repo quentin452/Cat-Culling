@@ -1,13 +1,14 @@
-package net.tclproject.entityculling;
+package fr.iamacat.catculling;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.util.ChatComponentText;
-import net.tclproject.entityculling.handlers.Config;
 
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 import com.logisticscraft.occlusionculling.cache.NoOpOcclusionCache;
+
+import fr.iamacat.catculling.handlers.Config;
 
 public abstract class EntityCullingBase {
 
@@ -16,7 +17,7 @@ public abstract class EntityCullingBase {
     public static boolean enabled = true; // public static to make it faster for the jvm
     public CullTask cullTask;
     private Thread cullThread;
-    protected KeyBinding keybind = new KeyBinding("key.entityculling.toggle", 0, "EntityCulling");
+    protected KeyBinding keybind = new KeyBinding("key.catculling.toggle", 0, "CatCullingBase");
     protected boolean pressed = false;
 
     // stats
@@ -61,33 +62,33 @@ public abstract class EntityCullingBase {
                     // list.add("[Culling] Ticked Entities: " + lastTickedEntities + "
                     // Skipped: " + lastSkippedEntityTicks);
                     player.addChatMessage(new ChatComponentText("Culling on"));
-                    EntityCulling.instance.renderedBlockEntities = 0;
-                    EntityCulling.instance.skippedBlockEntities = 0;
-                    EntityCulling.instance.renderedEntities = 0;
-                    EntityCulling.instance.skippedEntities = 0;
-                    EntityCulling.instance.renderedParticles = 0;
-                    EntityCulling.instance.skippedParticles = 0;
+                    CatCullingBase.instance.renderedBlockEntities = 0;
+                    CatCullingBase.instance.skippedBlockEntities = 0;
+                    CatCullingBase.instance.renderedEntities = 0;
+                    CatCullingBase.instance.skippedEntities = 0;
+                    CatCullingBase.instance.renderedParticles = 0;
+                    CatCullingBase.instance.skippedParticles = 0;
                 }
             } else {
                 if (player != null) {
                     player.addChatMessage(
                         new ChatComponentText(
-                            "[Culling] Last pass: " + EntityCulling.instance.cullTask.lastTime + "ms"));
+                            "[Culling] Last pass: " + CatCullingBase.instance.cullTask.lastTime + "ms"));
                     player.addChatMessage(
                         new ChatComponentText(
-                            "[Culling] Rendered Block Entities: " + EntityCulling.instance.renderedBlockEntities
+                            "[Culling] Rendered Block Entities: " + CatCullingBase.instance.renderedBlockEntities
                                 + " Skipped: "
-                                + EntityCulling.instance.skippedBlockEntities));
+                                + CatCullingBase.instance.skippedBlockEntities));
                     player.addChatMessage(
                         new ChatComponentText(
-                            "[Culling] Rendered Entities: " + EntityCulling.instance.renderedEntities
+                            "[Culling] Rendered Entities: " + CatCullingBase.instance.renderedEntities
                                 + " Skipped: "
-                                + EntityCulling.instance.skippedEntities));
+                                + CatCullingBase.instance.skippedEntities));
                     player.addChatMessage(
                         new ChatComponentText(
-                            "[Culling] Rendered Particles: " + EntityCulling.instance.renderedParticles
+                            "[Culling] Rendered Particles: " + CatCullingBase.instance.renderedParticles
                                 + " Skipped: "
-                                + EntityCulling.instance.skippedParticles));
+                                + CatCullingBase.instance.skippedParticles));
 
                     player.addChatMessage(new ChatComponentText("Culling off"));
                 }

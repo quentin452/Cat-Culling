@@ -1,4 +1,4 @@
-package net.tclproject.entityculling.handlers;
+package fr.iamacat.catculling.handlers;
 
 import java.io.File;
 
@@ -20,7 +20,7 @@ public class Config {
 
     public static void load(FMLPreInitializationEvent event) {
         Configuration config = new Configuration(
-            new File(event.getModConfigurationDirectory(), "EntityCulling.cfg"),
+            new File(event.getModConfigurationDirectory(), "CatCullingBase.cfg"),
             "1.1",
             true);
         config.load();

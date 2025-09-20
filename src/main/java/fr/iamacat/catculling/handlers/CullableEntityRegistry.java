@@ -1,4 +1,4 @@
-package net.tclproject.entityculling.handlers;
+package fr.iamacat.catculling.handlers;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.ConcurrentMap;
@@ -97,7 +97,10 @@ public class CullableEntityRegistry {
     // !Minecraft.getMinecraft().theWorld.loadedTileEntityList.contains(v));
     // }
 
-    /** Clear all wrapper caches to prevent classloader/world retention on disconnect. */
+    /**
+     * Clear all wrapper caches to prevent classloader/world retention on
+     * disconnect.
+     */
     public static void clear() {
         try {
             tileWrappers.clear();

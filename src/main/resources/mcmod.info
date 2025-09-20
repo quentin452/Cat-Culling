@@ -1,7 +1,7 @@
 [
 {
-  "modid": "entityculling",
-  "name": "Entity Culling Unofficial",
+  "modid": "catculling",
+  "name": "Cat Culling Unofficial",
   "description": "Backport of Entity Culling (1.8 version, under MIT) to 1.7.10.",
   "version": "${modVersion}",
   "mcversion": "1.7.10",

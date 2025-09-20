@@ -1,4 +1,4 @@
-package net.tclproject.entityculling.mixins.client;
+package fr.iamacat.catculling.mixins.client;
 
 import static net.minecraft.client.renderer.entity.RendererLivingEntity.NAME_TAG_RANGE;
 import static net.minecraft.client.renderer.entity.RendererLivingEntity.NAME_TAG_RANGE_SNEAK;
@@ -12,10 +12,6 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
-import net.tclproject.entityculling.EntityCulling;
-import net.tclproject.entityculling.handlers.Config;
-import net.tclproject.entityculling.handlers.CullableEntityRegistry;
-import net.tclproject.entityculling.handlers.CullableEntityWrapper;
 
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,12 +19,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import fr.iamacat.catculling.CatCullingBase;
+import fr.iamacat.catculling.handlers.Config;
+import fr.iamacat.catculling.handlers.CullableEntityRegistry;
+import fr.iamacat.catculling.handlers.CullableEntityWrapper;
+
 @Mixin(RenderManager.class)
 public class RenderManagerMixin {
 
     @Inject(method = "func_147939_a", at = @At("HEAD"), cancellable = true)
-    private void entityculling$cullEntity(Entity entity, double x, double y, double z, float tickDelta,
-        float partialTicks, boolean debug, CallbackInfoReturnable<Boolean> ci) {
+    private void catculling$cullEntity(Entity entity, double x, double y, double z, float tickDelta, float partialTicks,
+        boolean debug, CallbackInfoReturnable<Boolean> ci) {
         CullableEntityWrapper cullable = CullableEntityRegistry.getWrapper(entity);
 
         if (!cullable.isForcedVisible() && cullable.isCulled()) {
@@ -41,12 +42,12 @@ public class RenderManagerMixin {
                 }
             }
 
-            EntityCulling.instance.skippedEntities++;
+            CatCullingBase.instance.skippedEntities++;
             ci.setReturnValue(false);
             return;
         }
 
-        EntityCulling.instance.renderedEntities++;
+        CatCullingBase.instance.renderedEntities++;
         cullable.setOutOfCamera(false);
     }
 

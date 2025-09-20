@@ -1,4 +1,4 @@
-package net.tclproject.entityculling;
+package fr.iamacat.catculling;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;

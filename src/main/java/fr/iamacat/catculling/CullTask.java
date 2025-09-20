@@ -1,4 +1,4 @@
-package net.tclproject.entityculling;
+package fr.iamacat.catculling;
 
 import java.util.*;
 
@@ -7,15 +7,15 @@ import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.Vec3;
-import net.tclproject.entityculling.handlers.Config;
-import net.tclproject.entityculling.handlers.CullableEntityRegistry;
-import net.tclproject.entityculling.handlers.CullableEntityWrapper;
 
 import com.logisticscraft.occlusionculling.OcclusionCullingInstance;
 import com.logisticscraft.occlusionculling.util.Vec3d;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import fr.iamacat.catculling.handlers.Config;
+import fr.iamacat.catculling.handlers.CullableEntityRegistry;
+import fr.iamacat.catculling.handlers.CullableEntityWrapper;
 
 public class CullTask implements Runnable {
 
@@ -77,8 +77,8 @@ public class CullTask implements Runnable {
                                 entry = iterator.next();
                             } catch (NullPointerException | ConcurrentModificationException ex) {
                                 break; // We are not synced to the main thread, so NPE's/CME are
-                                // allowed here and
-                                // way less
+                                       // allowed here and
+                                       // way less
                                 // overhead probably than trying to sync stuff up for no really
                                 // good reason
                             }
@@ -125,8 +125,8 @@ public class CullTask implements Runnable {
                                 entity = iterable.next();
                             } catch (NullPointerException | ConcurrentModificationException ex) {
                                 break; // We are not synced to the main thread, so NPE's/CME are
-                                // allowed here and
-                                // way less
+                                       // allowed here and
+                                       // way less
                                 // overhead probably than trying to sync stuff up for no really
                                 // good reason
                             }

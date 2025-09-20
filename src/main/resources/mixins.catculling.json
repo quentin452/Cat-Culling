@@ -1,8 +1,8 @@
 {
   "required": true,
   "minVersion": "0.8.5-GTNH",
-  "package": "net.tclproject.entityculling.mixins",
-  "refmap": "mixins.entityculling.refmap.json",
+  "package": "fr.iamacat.catculling.mixins",
+  "refmap": "mixins.catculling.refmap.json",
   "target": "@env(DEFAULT)",
   "compatibilityLevel": "JAVA_8",
   "mixins": [],
