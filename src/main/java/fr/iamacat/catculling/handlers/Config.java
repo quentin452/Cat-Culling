@@ -28,7 +28,7 @@ public class Config {
 
     public static void load(FMLPreInitializationEvent event) {
         Configuration config = new Configuration(
-            new File(event.getModConfigurationDirectory(), "CatCullingBase.cfg"),
+            new File(event.getModConfigurationDirectory(), "CatCulling.cfg"),
             "1.1",
             true);
         config.load();
