@@ -7,14 +7,18 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLiving;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.util.AxisAlignedBB;
 
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -26,6 +30,9 @@ import fr.iamacat.catculling.handlers.CullableEntityWrapper;
 
 @Mixin(RenderManager.class)
 public class RenderManagerMixin {
+
+    @Unique
+    private static final Frustrum CATCULLING_FRUSTUM = new Frustrum();
 
     @Inject(method = "func_147939_a", at = @At("HEAD"), cancellable = true)
     private void catculling$cullEntity(Entity entity, double x, double y, double z, float tickDelta, float partialTicks,
@@ -45,6 +52,16 @@ public class RenderManagerMixin {
             CatCullingBase.instance.skippedEntities++;
             ci.setReturnValue(false);
             return;
+        }
+
+        // Apply frustum culling specifically for EntityItem
+        if (entity instanceof EntityItem && shouldApplyFrustumCulling()) {
+            if (isEntityItemOutsideFrustum((EntityItem) entity, partialTicks)) {
+                cullable.setOutOfCamera(true);
+                CatCullingBase.instance.skippedEntities++;
+                ci.setReturnValue(false);
+                return;
+            }
         }
 
         CatCullingBase.instance.renderedEntities++;
@@ -156,5 +173,57 @@ public class RenderManagerMixin {
                 || entityLiving.hasCustomNameTag() && entityLiving == RenderManager.instance.field_147941_i);
         }
         return shouldShow;
+    }
+
+    @Unique
+    private boolean shouldApplyFrustumCulling() {
+        if (!CatCullingBase.enabled) {
+            return false;
+        }
+
+        Minecraft mc = Minecraft.getMinecraft();
+        return mc.thePlayer != null && mc.theWorld != null
+            && !mc.thePlayer.noClip
+            && mc.gameSettings.thirdPersonView == 0;
+    }
+
+    @Unique
+    private boolean isEntityItemOutsideFrustum(EntityItem entityItem, float partialTicks) {
+        try {
+            Minecraft mc = Minecraft.getMinecraft();
+            Entity renderViewEntity = mc.renderViewEntity;
+
+            if (renderViewEntity == null) {
+                return false;
+            }
+
+            // Get the interpolated camera position
+            double cameraX = renderViewEntity.lastTickPosX
+                + (renderViewEntity.posX - renderViewEntity.lastTickPosX) * partialTicks;
+            double cameraY = renderViewEntity.lastTickPosY
+                + (renderViewEntity.posY - renderViewEntity.lastTickPosY) * partialTicks;
+            double cameraZ = renderViewEntity.lastTickPosZ
+                + (renderViewEntity.posZ - renderViewEntity.lastTickPosZ) * partialTicks;
+
+            CATCULLING_FRUSTUM.setPosition(cameraX, cameraY, cameraZ);
+
+            // Get the EntityItem's interpolated position
+            double itemX = entityItem.lastTickPosX + (entityItem.posX - entityItem.lastTickPosX) * partialTicks;
+            double itemY = entityItem.lastTickPosY + (entityItem.posY - entityItem.lastTickPosY) * partialTicks;
+            double itemZ = entityItem.lastTickPosZ + (entityItem.posZ - entityItem.lastTickPosZ) * partialTicks;
+
+            // Create a bounding box around the EntityItem
+            // EntityItems are typically small, so we use a small expansion
+            double size = 0.25; // Slightly smaller than particle size since items are more compact
+            AxisAlignedBB itemAABB = AxisAlignedBB
+                .getBoundingBox(itemX - size, itemY - size, itemZ - size, itemX + size, itemY + size, itemZ + size);
+
+            // Check if the EntityItem is outside the frustum
+            return !CATCULLING_FRUSTUM.isBoundingBoxInFrustum(itemAABB);
+
+        } catch (Exception e) {
+            // If anything goes wrong, don't cull the item
+            return false;
+        }
     }
 }
