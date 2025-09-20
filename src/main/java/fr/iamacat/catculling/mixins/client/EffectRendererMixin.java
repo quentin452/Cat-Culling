@@ -42,6 +42,21 @@ public class EffectRendererMixin {
     private float currentRenderPartialTicks;
     @Unique
     private Frustrum currentFrustum;
+    @Unique
+    private static final net.minecraft.util.AxisAlignedBB TEMP_PARTICLE_AABB = 
+        net.minecraft.util.AxisAlignedBB.getBoundingBox(0, 0, 0, 0, 0, 0);
+    @Unique
+    private static final double PARTICLE_SIZE = 0.3;
+    
+    // Cache for camera position to avoid recalculating for every particle
+    @Unique
+    private double cachedCameraX = Double.NaN;
+    @Unique
+    private double cachedCameraY = Double.NaN; 
+    @Unique
+    private double cachedCameraZ = Double.NaN;
+    @Unique
+    private boolean cameraPositionCached = false;
 
     @Shadow
     private List[] fxLayers;
@@ -54,22 +69,32 @@ public class EffectRendererMixin {
     private void catculling$captureRenderParams(Entity renderViewEntity, float partialTicks, CallbackInfo ci) {
         this.currentRenderViewEntity = renderViewEntity;
         this.currentRenderPartialTicks = partialTicks;
+        
+        // Pre-calculate camera position once per render frame
+        cachedCameraX = renderViewEntity.lastTickPosX
+            + (renderViewEntity.posX - renderViewEntity.lastTickPosX) * partialTicks;
+        cachedCameraY = renderViewEntity.lastTickPosY
+            + (renderViewEntity.posY - renderViewEntity.lastTickPosY) * partialTicks;
+        cachedCameraZ = renderViewEntity.lastTickPosZ
+            + (renderViewEntity.posZ - renderViewEntity.lastTickPosZ) * partialTicks;
+        cameraPositionCached = true;
+        
+        TEMP_CAMERA.set(cachedCameraX, cachedCameraY, cachedCameraZ);
 
         // Get the current frustum using ClippingHelper which is available in 1.7.10
         try {
             // Create a new frustum for this render pass
             this.currentFrustum = new Frustrum();
-            // Get the interpolated camera position
-            double cameraX = renderViewEntity.lastTickPosX
-                + (renderViewEntity.posX - renderViewEntity.lastTickPosX) * partialTicks;
-            double cameraY = renderViewEntity.lastTickPosY
-                + (renderViewEntity.posY - renderViewEntity.lastTickPosY) * partialTicks;
-            double cameraZ = renderViewEntity.lastTickPosZ
-                + (renderViewEntity.posZ - renderViewEntity.lastTickPosZ) * partialTicks;
-            this.currentFrustum.setPosition(cameraX, cameraY, cameraZ);
+            this.currentFrustum.setPosition(cachedCameraX, cachedCameraY, cachedCameraZ);
         } catch (Exception e) {
             this.currentFrustum = null;
         }
+    }
+
+    @Inject(method = "renderParticles", at = @At("RETURN"))
+    private void catculling$resetCacheOnReturn(Entity renderViewEntity, float partialTicks, CallbackInfo ci) {
+        // Reset cache flag for next render frame
+        cameraPositionCached = false;
     }
 
     @Redirect(
@@ -127,14 +152,23 @@ public class EffectRendererMixin {
                 return true;
             }
 
-            double cameraX = currentRenderViewEntity.lastTickPosX
-                + (currentRenderViewEntity.posX - currentRenderViewEntity.lastTickPosX) * currentRenderPartialTicks;
-            double cameraY = currentRenderViewEntity.lastTickPosY
-                + (currentRenderViewEntity.posY - currentRenderViewEntity.lastTickPosY) * currentRenderPartialTicks;
-            double cameraZ = currentRenderViewEntity.lastTickPosZ
-                + (currentRenderViewEntity.posZ - currentRenderViewEntity.lastTickPosZ) * currentRenderPartialTicks;
-            TEMP_CAMERA.set(cameraX, cameraY, cameraZ);
+            // Use cached camera position if available, otherwise calculate
+            double cameraX, cameraY, cameraZ;
+            if (cameraPositionCached) {
+                cameraX = cachedCameraX;
+                cameraY = cachedCameraY;
+                cameraZ = cachedCameraZ;
+            } else {
+                cameraX = currentRenderViewEntity.lastTickPosX
+                    + (currentRenderViewEntity.posX - currentRenderViewEntity.lastTickPosX) * currentRenderPartialTicks;
+                cameraY = currentRenderViewEntity.lastTickPosY
+                    + (currentRenderViewEntity.posY - currentRenderViewEntity.lastTickPosY) * currentRenderPartialTicks;
+                cameraZ = currentRenderViewEntity.lastTickPosZ
+                    + (currentRenderViewEntity.posZ - currentRenderViewEntity.lastTickPosZ) * currentRenderPartialTicks;
+                TEMP_CAMERA.set(cameraX, cameraY, cameraZ);
+            }
 
+            // Early distance check
             double dx = particle.posX - cameraX;
             double dy = particle.posY - cameraY;
             double dz = particle.posZ - cameraZ;
@@ -144,27 +178,26 @@ public class EffectRendererMixin {
                 return true;
             }
 
-            // First check frustum culling if available
+            // First check frustum culling if available - reuse AABB object
             if (currentFrustum != null) {
-                // Create a small bounding box around the particle for frustum checking
-                double size = 0.3;
-                net.minecraft.util.AxisAlignedBB particleAABB = net.minecraft.util.AxisAlignedBB.getBoundingBox(
-                    particle.posX - size,
-                    particle.posY - size,
-                    particle.posZ - size,
-                    particle.posX + size,
-                    particle.posY + size,
-                    particle.posZ + size);
+                // Reuse the static AABB object to avoid allocation
+                TEMP_PARTICLE_AABB.setBounds(
+                    particle.posX - PARTICLE_SIZE,
+                    particle.posY - PARTICLE_SIZE,
+                    particle.posZ - PARTICLE_SIZE,
+                    particle.posX + PARTICLE_SIZE,
+                    particle.posY + PARTICLE_SIZE,
+                    particle.posZ + PARTICLE_SIZE);
 
-                if (!currentFrustum.isBoundingBoxInFrustum(particleAABB)) {
+                if (!currentFrustum.isBoundingBoxInFrustum(TEMP_PARTICLE_AABB)) {
                     cullable.setCulled(true);
                     return false;
                 }
             }
 
-            double size = 0.3;
-            TEMP_AABB_MIN.set(particle.posX - size, particle.posY - size, particle.posZ - size);
-            TEMP_AABB_MAX.set(particle.posX + size, particle.posY + size, particle.posZ + size);
+            // Use pre-calculated AABB bounds
+            TEMP_AABB_MIN.set(particle.posX - PARTICLE_SIZE, particle.posY - PARTICLE_SIZE, particle.posZ - PARTICLE_SIZE);
+            TEMP_AABB_MAX.set(particle.posX + PARTICLE_SIZE, particle.posY + PARTICLE_SIZE, particle.posZ + PARTICLE_SIZE);
 
             boolean visible = CatCullingBase.instance.culling.isAABBVisible(TEMP_AABB_MIN, TEMP_AABB_MAX, TEMP_CAMERA);
             cullable.setCulled(!visible);
