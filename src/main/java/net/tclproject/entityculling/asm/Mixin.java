@@ -20,7 +20,8 @@ public enum Mixin implements IMixin {
     // Entity Culling Mixins
     client_TileEntityRendererDispatcherMixin(Side.CLIENT, m -> true, "TileEntityRendererDispatcherMixin"),
     client_RenderManagerMixin(Side.CLIENT, m -> true, "RenderManagerMixin"),
-    client_EntityFXMixin(Side.CLIENT, m -> EntityCullingUnofficialConfig.fixModdedParticles, "EntityFXMixin"),
+    client_EffectRendererMixin(Side.CLIENT, m -> EntityCullingUnofficialConfig.fixModdedParticles,
+        "EffectRendererMixin"),
 
     // MOD-FILTERED MIXINS
 
