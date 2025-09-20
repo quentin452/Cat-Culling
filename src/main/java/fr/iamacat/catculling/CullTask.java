@@ -109,11 +109,14 @@ public class CullTask implements Runnable {
                                             "Currently processing tileentity " + entry.getBlockType()
                                                 .getUnlocalizedName());
                                     }
-                                    boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
-                                    // System.out.println(visible
-                                    // + "," +
-                                    // entry.getBlockType().getUnlocalizedName());
-                                    cullable.setCulled(!visible);
+
+                                    // Apply tile entity occlusion culling if enabled
+                                    if (Config.enableTileEntityOcclusionCulling) {
+                                        boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+                                        cullable.setCulled(!visible);
+                                    } else {
+                                        cullable.setCulled(false);
+                                    }
                                 }
                             }
                         }
@@ -151,8 +154,14 @@ public class CullTask implements Runnable {
                                 if (Config.debugMode) {
                                     System.out.println("Currently processing entity " + entity.getCommandSenderName());
                                 }
-                                boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
-                                cullable.setCulled(!visible);
+
+                                // Apply entity occlusion culling if enabled
+                                if (Config.enableEntityOcclusionCulling) {
+                                    boolean visible = culling.isAABBVisible(aabbMin, aabbMax, camera);
+                                    cullable.setCulled(!visible);
+                                } else {
+                                    cullable.setCulled(false);
+                                }
                             }
                         }
 

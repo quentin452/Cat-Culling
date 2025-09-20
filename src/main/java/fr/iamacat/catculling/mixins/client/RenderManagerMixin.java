@@ -54,8 +54,8 @@ public class RenderManagerMixin {
             return;
         }
 
-        // Apply frustum culling specifically for EntityItem
-        if (entity instanceof EntityItem && shouldApplyFrustumCulling()) {
+        // Apply frustum culling specifically for EntityItem if enabled
+        if (entity instanceof EntityItem && Config.enableEntityItemFrustumCulling && shouldApplyFrustumCulling()) {
             if (isEntityItemOutsideFrustum((EntityItem) entity, partialTicks)) {
                 cullable.setOutOfCamera(true);
                 CatCullingBase.instance.skippedEntities++;

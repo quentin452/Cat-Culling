@@ -142,8 +142,8 @@ public class EffectRendererMixin {
                 return true;
             }
 
-            // First check frustum culling if available
-            if (currentFrustum != null) {
+            // Check frustum culling if enabled and available
+            if (Config.enableParticleFrustumCulling && currentFrustum != null) {
                 // Create a small bounding box around the particle for frustum checking
                 double size = 0.3;
                 net.minecraft.util.AxisAlignedBB particleAABB = net.minecraft.util.AxisAlignedBB.getBoundingBox(
@@ -156,15 +156,22 @@ public class EffectRendererMixin {
 
                 if (!currentFrustum.isBoundingBoxInFrustum(particleAABB)) {
                     cullable.setCulled(true);
+                    cullable.setOutOfCamera(true);
                     return false;
                 }
             }
 
-            // Use direct particle culling instead of AABB approach for better performance
-            TEMP_PARTICLE.set(particle.posX, particle.posY, particle.posZ);
-            boolean visible = CatCullingBase.instance.culling.isParticleVisible(TEMP_PARTICLE, TEMP_CAMERA);
-            cullable.setCulled(!visible);
-            return visible;
+            // Check occlusion culling if enabled
+            if (Config.enableParticleOcclusionCulling) {
+                // Use direct particle culling instead of AABB approach for better performance
+                TEMP_PARTICLE.set(particle.posX, particle.posY, particle.posZ);
+                boolean visible = CatCullingBase.instance.culling.isParticleVisible(TEMP_PARTICLE, TEMP_CAMERA);
+                cullable.setCulled(!visible);
+                return visible;
+            }
+
+            // If no culling is enabled, always render
+            return true;
 
         } catch (Exception e) {
             return true;
