@@ -498,6 +498,157 @@ public class OcclusionCullingInstance {
         this.cache.resetCache();
     }
 
+    /**
+     * Efficient particle visibility check without AABB overhead.
+     * Directly checks if a single point (particle position) is visible from the viewer.
+     * 
+     * @param particlePosition The world position of the particle
+     * @param viewerPosition   The position of the viewer/camera
+     * @return true if the particle is visible (not occluded), false otherwise
+     */
+    public boolean isParticleVisible(Vec3d particlePosition, Vec3d viewerPosition) {
+        try {
+            // Set camera position for caching
+            cameraPos[0] = MathUtilities.floor(viewerPosition.x);
+            cameraPos[1] = MathUtilities.floor(viewerPosition.y);
+            cameraPos[2] = MathUtilities.floor(viewerPosition.z);
+
+            // Get particle block coordinates
+            int particleX = MathUtilities.floor(particlePosition.x);
+            int particleY = MathUtilities.floor(particlePosition.y);
+            int particleZ = MathUtilities.floor(particlePosition.z);
+
+            // Quick cache check first
+            int cachedValue = getCacheValue(particleX, particleY, particleZ);
+            if (cachedValue == 1) {
+                return true; // Cached as visible
+            }
+            if (cachedValue == 2) {
+                return false; // Cached as occluded
+            }
+
+            // Reset ray check state
+            allowRayChecks = false;
+
+            // Direct raycast from viewer to particle
+            return isDirectVisible(viewerPosition, particlePosition);
+
+        } catch (Throwable t) {
+            // Failsafe - assume visible on error
+            t.printStackTrace();
+            return true;
+        }
+    }
+
+    /**
+     * Direct visibility check between two points using raycasting.
+     * More efficient than AABB checking for single points like particles.
+     */
+    private boolean isDirectVisible(Vec3d start, Vec3d target) {
+        double relativeX = start.x - target.x;
+        double relativeY = start.y - target.y;
+        double relativeZ = start.z - target.z;
+
+        // Early termination: if very close, consider visible
+        double distanceSquared = relativeX * relativeX + relativeY * relativeY + relativeZ * relativeZ;
+        if (distanceSquared < 2.0) { // Within sqrt(2) ≈ 1.41 blocks
+            cacheResult(target, true);
+            return true;
+        }
+
+        // Calculate ray parameters
+        double dimensionX = Math.abs(relativeX);
+        double dimensionY = Math.abs(relativeY);
+        double dimensionZ = Math.abs(relativeZ);
+
+        // Skip if essentially same position
+        if (dimensionX < 0.01 && dimensionY < 0.01 && dimensionZ < 0.01) {
+            cacheResult(target, true);
+            return true;
+        }
+
+        // Setup ray traversal
+        double dimFracX = dimensionX > 0 ? 1.0 / dimensionX : Double.MAX_VALUE;
+        double dimFracY = dimensionY > 0 ? 1.0 / dimensionY : Double.MAX_VALUE;
+        double dimFracZ = dimensionZ > 0 ? 1.0 / dimensionZ : Double.MAX_VALUE;
+
+        int x = cameraPos[0];
+        int y = cameraPos[1];
+        int z = cameraPos[2];
+
+        int intersectCount = 1;
+        int x_inc, y_inc, z_inc;
+        double t_next_x, t_next_y, t_next_z;
+
+        // X direction setup
+        if (dimensionX < 0.01) {
+            x_inc = 0;
+            t_next_x = Double.MAX_VALUE;
+        } else if (target.x > start.x) {
+            x_inc = 1;
+            intersectCount += MathUtilities.floor(target.x) - x;
+            t_next_x = (x + 1 - start.x) * dimFracX;
+        } else {
+            x_inc = -1;
+            intersectCount += x - MathUtilities.floor(target.x);
+            t_next_x = (start.x - x) * dimFracX;
+        }
+
+        // Y direction setup
+        if (dimensionY < 0.01) {
+            y_inc = 0;
+            t_next_y = Double.MAX_VALUE;
+        } else if (target.y > start.y) {
+            y_inc = 1;
+            intersectCount += MathUtilities.floor(target.y) - y;
+            t_next_y = (y + 1 - start.y) * dimFracY;
+        } else {
+            y_inc = -1;
+            intersectCount += y - MathUtilities.floor(target.y);
+            t_next_y = (start.y - y) * dimFracY;
+        }
+
+        // Z direction setup
+        if (dimensionZ < 0.01) {
+            z_inc = 0;
+            t_next_z = Double.MAX_VALUE;
+        } else if (target.z > start.z) {
+            z_inc = 1;
+            intersectCount += MathUtilities.floor(target.z) - z;
+            t_next_z = (z + 1 - start.z) * dimFracZ;
+        } else {
+            z_inc = -1;
+            intersectCount += z - MathUtilities.floor(target.z);
+            t_next_z = (start.z - z) * dimFracZ;
+        }
+
+        // Perform ray traversal
+        boolean visible = stepRay(
+            start,
+            x,
+            y,
+            z,
+            dimFracX,
+            dimFracY,
+            dimFracZ,
+            intersectCount,
+            x_inc,
+            y_inc,
+            z_inc,
+            t_next_y,
+            t_next_x,
+            t_next_z);
+
+        provider.cleanup();
+        cacheResult(target, visible);
+
+        if (visible) {
+            allowRayChecks = true;
+        }
+
+        return visible;
+    }
+
     private enum Relative {
 
         INSIDE,

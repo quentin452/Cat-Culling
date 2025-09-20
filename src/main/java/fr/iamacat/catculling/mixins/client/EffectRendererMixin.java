@@ -33,9 +33,7 @@ public class EffectRendererMixin {
     @Unique
     private static final Vec3d TEMP_CAMERA = new Vec3d(0, 0, 0);
     @Unique
-    private static final Vec3d TEMP_AABB_MIN = new Vec3d(0, 0, 0);
-    @Unique
-    private static final Vec3d TEMP_AABB_MAX = new Vec3d(0, 0, 0);
+    private static final Vec3d TEMP_PARTICLE = new Vec3d(0, 0, 0);
     @Unique
     private Entity currentRenderViewEntity;
     @Unique
@@ -162,11 +160,9 @@ public class EffectRendererMixin {
                 }
             }
 
-            double size = 0.3;
-            TEMP_AABB_MIN.set(particle.posX - size, particle.posY - size, particle.posZ - size);
-            TEMP_AABB_MAX.set(particle.posX + size, particle.posY + size, particle.posZ + size);
-
-            boolean visible = CatCullingBase.instance.culling.isAABBVisible(TEMP_AABB_MIN, TEMP_AABB_MAX, TEMP_CAMERA);
+            // Use direct particle culling instead of AABB approach for better performance
+            TEMP_PARTICLE.set(particle.posX, particle.posY, particle.posZ);
+            boolean visible = CatCullingBase.instance.culling.isParticleVisible(TEMP_PARTICLE, TEMP_CAMERA);
             cullable.setCulled(!visible);
             return visible;
 
