@@ -76,6 +76,10 @@ public class RenderManagerMixin {
         GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
 
         if (d3 < (double) (f2 * f2)) {
+            if (entity.isDead || !entity.isEntityAlive() || entity.getClass().getName().contains("shatter")) {
+                return;
+            }
+
             String s = entity.func_145748_c_()
                 .getFormattedText();
 
@@ -118,7 +122,7 @@ public class RenderManagerMixin {
         }
     }
 
-    private static void func_147906_a(Entity entity, String text, double x, double y, double z, int maxDistance) {
+    private static void func_147906_a(Entity entity, String text, double x, double y, double z, int maxDistance) {        
         double d3 = entity.getDistanceSqToEntity(RenderManager.instance.livingPlayer);
 
         if (d3 <= (double) (maxDistance * maxDistance)) {
