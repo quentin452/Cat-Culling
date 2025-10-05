@@ -8,6 +8,7 @@ The original mod : [HERE](https://www.curseforge.com/minecraft/mc-mods/entitycul
 
 ## Bug Fixes
 - Fixed multiple memory leaks and inefficiencies, improving overall stability and performance.
+- Fixed "unknown" nametag name appearing after killing mobs if shatter mod is installed
 
 ## New Features
 - Added **Particle Occlusion and Frustum Culling**: particles outside the player's view and behind walls are no longer rendered, reducing lag and improving FPS.
